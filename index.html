@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v10.0 – Korrekte valutaer og totaler</title>
+  <title>📊 Aktie-App v10.1 – Korrekte valutaer og totaler</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
@@ -43,20 +43,23 @@
     const FX_URL  = "https://api.frankfurter.app/latest?from=EUR&to=DKK";
     const FX_CACHE_KEY = "eurdkk_v1";
 
-    // === Valutakurs med cache ===
+    // === Valutakurs med cache i localStorage ===
     async function hentEURDKK() {
       try {
         const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
         if (cached?.rate) {
-          // Baggrundsopdatering uden at forstyrre
+          // Baggrundsopdatering uden popup
           opdaterBaggrund(cached.rate).catch(()=>{});
           return cached.rate;
         }
         const rate = await hentFraNet();
         gemRate(rate);
         return rate;
-      } catch { return 7.46; } // fallback
+      } catch {
+        return 7.46; // fallback (fastkurspolitik)
+      }
     }
+
     async function opdaterBaggrund(nu) {
       try {
         const ny = await hentFraNet();
@@ -66,17 +69,19 @@
         }
       } catch(e){ console.warn("Baggrund FX fejl:", e); }
     }
+
     async function hentFraNet() {
       const res = await fetch(FX_URL);
       const d = await res.json();
       if (!d?.rates?.DKK) throw new Error("ingen DKK rate");
       return d.rates.DKK;
     }
+
     function gemRate(rate) {
       localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()}));
     }
 
-    // === Hjælpefunktioner ===
+    // === Formatering ===
     const fmtDKK = v => Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtPct = v => (v>0?"+":"") + v.toFixed(2).replace(".",",") + "%";
     const pilSVG = delta => {
@@ -122,18 +127,20 @@
         let kob      = Number(row.KøbsKurs);
         const antal  = Number(row.Antal);
 
-        // Global Enhanced override
+        // 🟦 Særlig regel: Global Enhanced har fast købspris 195,80 DKK
         if (navn.toLowerCase().includes("global enhanced")) kob = 195.80;
 
-        // Konverter kun hvis EUR
+        // 🟩 Konverter kun EUR til DKK (ingen dobbeltkonvertering)
         const kursDKK = valuta === "EUR" ? kurs * eurDkk : kurs;
         const kobDKK  = valuta === "EUR" ? kob  * eurDkk : kob;
 
-        // Beregning i DKK (ingen dobbelt konvertering)
+        // Beregn reelle værdier
         const valueNow   = kursDKK * antal;
         const valueStart = kobDKK  * antal;
         const deltaDKK   = valueNow - valueStart;
-        const deltaPct   = ((kursDKK - kobDKK) / kobDKK) * 100;
+
+        // 🟨 Procent beregnes i fondens egen valuta – ikke i DKK
+        const deltaPct   = ((kurs - kob) / kob) * 100;
 
         totalNowDKK  += valueNow;
         totalCostDKK += valueStart;
