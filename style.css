@@ -1,41 +1,133 @@
-body {
-  background-color: #111;
-  color: #ddd;
-  font-family: "Segoe UI", sans-serif;
-  text-align: center;
-  padding: 20px;
+:root{
+  --bg:#0d0f14;
+  --card:#181c23;
+  --txt:#e6eef7;
+  --muted:#9fb0c3;
+  --brand:#00bfff;
+  --green:#38d18e;
+  --red:#ff5a6e;
+  --equal:#b7c4d6;
+  --border:#233042;
 }
-h1 {
-  color: #00bfff;
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.45;
+  padding:24px 16px 48px;
 }
-button {
-  background-color: #00bfff;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 16px;
+
+h1{
+  margin:0 0 6px 0;
+  text-align:center;
+  color:var(--brand);
+  font-weight:800;
+  letter-spacing:.3px;
 }
-button:hover {
-  background-color: #0080ff;
+.hint{
+  text-align:center;
+  color:var(--muted);
+  margin:0 0 12px 0;
 }
-table {
-  width: 95%;
-  margin: 20px auto;
-  border-collapse: collapse;
-  background-color: #222;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
-  border-radius: 10px;
+
+.actions{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  margin:10px 0 6px;
 }
-th, td {
-  padding: 10px;
-  border-bottom: 1px solid #333;
+button{
+  background:var(--brand);
+  color:#00121d;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(0,191,255,.18);
+  transition:transform .06s ease, filter .2s ease;
 }
-th {
-  background-color: #00bfff;
-  color: #fff;
+button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
+button:active{ transform:translateY(1px); }
+button.ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+  box-shadow:none;
 }
-h3 {
-  color: #00ff99;
+button.ghost:hover{ color:var(--txt); }
+
+.loader{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  justify-content:center;
+  width:100%;
+  margin-top:8px;
+  color:var(--muted);
+}
+.spinner{
+  width:14px;height:14px;border:3px solid var(--border);
+  border-top-color:var(--brand); border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+main{
+  max-width:1100px;
+  margin:18px auto 0;
+  padding:0 6px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+}
+thead th{
+  background:linear-gradient(180deg,#0f6ea8,#0a5a8a);
+  color:#eaf6ff;
+  font-weight:800;
+  padding:12px 10px;
+  text-align:left;
+}
+tbody td{
+  padding:12px 10px;
+  border-top:1px solid var(--border);
+  vertical-align:middle;
+}
+td.left{ text-align:left; }
+td.kurs{ display:flex; align-items:center; gap:8px; }
+.kurs-val{ min-width:64px; display:inline-block; }
+
+.arrow{
+  width:16px; height:16px;
+  display:inline-block;
+}
+.arrow-wrap.up svg path{ fill:var(--green); }
+.arrow-wrap.down svg path{ fill:var(--red); }
+.arrow-wrap.equal svg rect{ fill:var(--equal); }
+
+td.pos{ color:var(--green); font-weight:700; }
+td.neg{ color:var(--red); font-weight:700; }
+td.neu{ color:var(--muted); font-weight:700; }
+
+.total{
+  text-align:center;
+  color:var(--green);
+  margin:16px 0 0 0;
+  font-weight:800;
+}
+
+/* Mobil */
+@media (max-width:720px){
+  body{ padding:18px 10px 40px; }
+  thead th:nth-child(5){ display:none; }   /* skjul "KøbsKurs (EUR)" på små skærme */
+  tbody td:nth-child(5){ display:none; }
 }
