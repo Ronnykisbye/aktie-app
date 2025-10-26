@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v9.1 – Korrekte valutaer & totaler</title>
+  <title>📊 Aktie-App v10.0 – Korrekte valutaer og totaler</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
@@ -27,6 +27,7 @@
     .totals h3{margin:8px 0}
   </style>
 </head>
+
 <body>
   <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
   <p>Tryk på <b>Opdater</b> for at hente dine fonde og valutakurs.</p>
@@ -39,36 +40,59 @@
 
   <script>
     const CSV_URL = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
-    // primær kurskilde med CORS (stabil til GitHub Pages)
-    const FX_URL = "https://open.er-api.com/v6/latest/EUR";
+    const FX_URL  = "https://api.frankfurter.app/latest?from=EUR&to=DKK";
+    const FX_CACHE_KEY = "eurdkk_v1";
 
+    // === Valutakurs med cache ===
     async function hentEURDKK() {
       try {
-        const res = await fetch(FX_URL, {cache:"no-store"});
-        const data = await res.json();
-        if (!data || !data.rates || !data.rates.DKK) throw new Error("mangler DKK");
-        return data.rates.DKK;
-      } catch {
-        return 7.45; // fallback (fastkurspolitik)
-      }
+        const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
+        if (cached?.rate) {
+          // Baggrundsopdatering uden at forstyrre
+          opdaterBaggrund(cached.rate).catch(()=>{});
+          return cached.rate;
+        }
+        const rate = await hentFraNet();
+        gemRate(rate);
+        return rate;
+      } catch { return 7.46; } // fallback
+    }
+    async function opdaterBaggrund(nu) {
+      try {
+        const ny = await hentFraNet();
+        if (Math.abs(ny - nu) >= 0.0001) {
+          gemRate(ny);
+          console.log("Ny EUR/DKK:", ny);
+        }
+      } catch(e){ console.warn("Baggrund FX fejl:", e); }
+    }
+    async function hentFraNet() {
+      const res = await fetch(FX_URL);
+      const d = await res.json();
+      if (!d?.rates?.DKK) throw new Error("ingen DKK rate");
+      return d.rates.DKK;
+    }
+    function gemRate(rate) {
+      localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()}));
     }
 
-    function fmtDKK(v){return Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});}
-    function fmtPct(v){return Number(v).toFixed(2)+"%";}
+    // === Hjælpefunktioner ===
+    const fmtDKK = v => Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmtPct = v => (v>0?"+":"") + v.toFixed(2).replace(".",",") + "%";
+    const pilSVG = delta => {
+      if (delta>0) return '<svg class="arrow up" viewBox="0 0 24 24"><path d="M12 2l6 8h-4v12h-4V10H6z"/></svg>';
+      if (delta<0) return '<svg class="arrow down" viewBox="0 0 24 24"><path d="M12 22l-6-8h4V2h4v12h4z"/></svg>';
+      return "";
+    };
 
-    function pilSVG(deltaDKK){
-      if (deltaDKK>0) return '<svg class="arrow up" viewBox="0 0 24 24"><path d="M12 2l6 8h-4v12H10V10H6z"/></svg>';
-      if (deltaDKK<0) return '<svg class="arrow down" viewBox="0 0 24 24"><path d="M12 22l-6-8h4V2h4v12h4z"/></svg>';
-      return '';
-    }
-
-    async function opdater(){
+    // === Hovedfunktion ===
+    async function opdater() {
       const status = document.getElementById("status");
       const out = document.getElementById("output");
       status.textContent = "⏳ Henter data…";
 
       const eurDkk = await hentEURDKK();
-      status.textContent = `💶 EUR/DKK = ${eurDkk.toFixed(2)} (opdateret ${new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"})})`;
+      status.textContent = `💶 EUR/DKK = ${eurDkk.toFixed(4)} (opd. ${new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"})})`;
 
       const csvText = await fetch(CSV_URL,{cache:"no-store"}).then(r=>r.text());
       const rows = Papa.parse(csvText,{header:true,dynamicTyping:true,skipEmptyLines:true}).data;
@@ -87,32 +111,37 @@
             <th>Udvikling (%)</th>
             <th>Udvikling (DKK)</th>
           </tr>
-        </thead>
-        <tbody>`;
+        </thead><tbody>`;
 
-      rows.forEach(row=>{
-        if(!row || !row.Navn) return;
+      rows.forEach(row => {
+        if (!row || !row.Navn) return;
 
-        const valuta = String(row.Valuta||"").toUpperCase().trim(); // "EUR" eller "DKK"
-        const kurs = Number(row.Kurs);
-        const kob  = Number(row.KøbsKurs);
-        const antal= Number(row.Antal);
+        const navn   = row.Navn.trim();
+        const valuta = String(row.Valuta || "").toUpperCase().trim();
+        let kurs     = Number(row.Kurs);
+        let kob      = Number(row.KøbsKurs);
+        const antal  = Number(row.Antal);
 
-        // konverter til DKK kun hvis EUR
-        const kursDKK = valuta==="EUR" ? kurs*eurDkk : kurs;
-        const kobDKK  = valuta==="EUR" ? kob*eurDkk  : kob;
+        // Global Enhanced override
+        if (navn.toLowerCase().includes("global enhanced")) kob = 195.80;
 
-        // Udvikling
-        const deltaPct = ((kurs - kob) / kob) * 100; // i samme valuta
-        const deltaDKK = (kursDKK - kobDKK) * antal;
+        // Konverter kun hvis EUR
+        const kursDKK = valuta === "EUR" ? kurs * eurDkk : kurs;
+        const kobDKK  = valuta === "EUR" ? kob  * eurDkk : kob;
 
-        // totals
-        totalNowDKK  += kursDKK * antal;
-        totalCostDKK += kobDKK  * antal;
+        // Beregning i DKK (ingen dobbelt konvertering)
+        const valueNow   = kursDKK * antal;
+        const valueStart = kobDKK  * antal;
+        const deltaDKK   = valueNow - valueStart;
+        const deltaPct   = ((kursDKK - kobDKK) / kobDKK) * 100;
 
-        const cls = deltaDKK>0 ? "pos" : (deltaDKK<0 ? "neg" : "neu");
+        totalNowDKK  += valueNow;
+        totalCostDKK += valueStart;
+
+        const cls = deltaDKK>0 ? "pos" : deltaDKK<0 ? "neg" : "neu";
+
         html += `<tr>
-          <td>${row.Navn}</td>
+          <td>${navn}</td>
           <td>${kurs.toFixed(2)} ${valuta}</td>
           <td>${fmtDKK(kursDKK)} DKK ${pilSVG(deltaDKK)}</td>
           <td>${antal}</td>
@@ -125,7 +154,7 @@
       html += `</tbody></table>`;
 
       const totalDeltaDKK = totalNowDKK - totalCostDKK;
-      const deltaCls = totalDeltaDKK>0 ? "pos" : (totalDeltaDKK<0 ? "neg" : "neu");
+      const deltaCls = totalDeltaDKK>0 ? "pos" : totalDeltaDKK<0 ? "neg" : "neu";
 
       html += `<div class="totals">
         <h3 class="pos">💰 Samlet porteføljeværdi: ${fmtDKK(totalNowDKK)} DKK</h3>
@@ -133,6 +162,11 @@
       </div>`;
 
       out.innerHTML = html;
+
+      console.log("Sanity-check",{
+        Totalværdi:totalNowDKK,
+        Samletgevinst:totalDeltaDKK
+      });
     }
 
     document.getElementById("updateBtn").addEventListener("click", opdater);
