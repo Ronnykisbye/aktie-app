@@ -1,128 +1,182 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v8.2 – Udvikling i DKK & %</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📊 Aktie-App v8.3 – Udvikling i DKK & %</title>
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
 <body>
-  <h1>📈 Aktie-App v8.2 – Udvikling i DKK & %</h1>
-  <p>Tryk på <b>Indlæs og beregn</b> for at hente dine fonde.</p>
+  <header>
+    <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
+    <p class="hint">Tryk på <b>Opdater</b> for at hente dine fonde og valutakurs.</p>
+    <div class="actions">
+      <button id="reloadBtn">🔄 Opdater</button>
+      <button id="pdfBtn" class="ghost" title="Gem rapport som PDF">💾 Download som PDF</button>
+    </div>
+    <div id="loader" class="loader" style="display:none">
+      <span class="spinner"></span> Henter data… vent venligst
+    </div>
+  </header>
 
-  <label for="csvFile">Vælg din CSV-fil med fondskurser:</label><br>
-  <input type="file" id="csvFile" accept=".csv"><br><br>
-
-  <button id="loadBtn">📊 Indlæs og beregn</button>
-  <button id="pdfBtn" style="display:none;">💾 Download som PDF</button>
-
-  <div id="loader" style="display:none; margin-top:20px;">
-    <p>⏳ Henter data… Vent venligst</p>
-  </div>
-
-  <div id="output"></div>
+  <main id="output"></main>
 
   <script>
-    // Funktion til at hente valutakursen EUR/DKK
-    async function hentValutakurs() {
+    // --- Indstillinger ---
+    const CSV_URL = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
+    const ECB_URL = "https://api.exchangerate.host/latest?base=EUR&symbols=DKK";
+
+    // SVG ikoner (inline) – lette, skalerbare og farves via 'fill'
+    const SVG_UP = `
+      <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4l7 8h-4v8H9v-8H5z"></path>
+      </svg>`;
+    const SVG_DOWN = `
+      <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20l-7-8h4V4h6v8h4z"></path>
+      </svg>`;
+    const SVG_EQUAL = `
+      <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="10" width="14" height="4" rx="2" ry="2"></rect>
+      </svg>`;
+
+    async function hentEURDKK() {
       try {
-        const response = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/EURDKK=X?interval=1d&range=1d");
-        const data = await response.json();
-        const kurs = data.chart.result[0].meta.regularMarketPrice;
-        return kurs;
-      } catch (error) {
-        alert("Kunne ikke hente valutakurs (EUR/DKK). Bruger 7.45 som standard.");
+        const res = await fetch(ECB_URL, { cache: "no-store" });
+        const data = await res.json();
+        if (!data || !data.rates || !data.rates.DKK) throw new Error("manglende DKK");
+        return data.rates.DKK;
+      } catch (e) {
+        alert("Kunne ikke hente EUR/DKK fra ECB. Bruger 7.45 som standard.");
         return 7.45;
       }
     }
 
-    // Beregner og viser resultater
-    function beregnData(data) {
-      let samletDKK = 0;
-      hentValutakurs().then(kursEURDKK => {
-        let html = `
-          <div id="rapport">
-          <table>
-            <tr>
-              <th>Navn</th><th>Kurs (EUR)</th><th>Kurs (DKK)</th>
-              <th>Antal</th><th>KøbsKurs (EUR)</th>
-              <th>Udvikling (%)</th><th>Udvikling (DKK)</th>
-            </tr>`;
-        data.forEach(rad => {
-          if (!rad.Navn) return;
-          const kursDKK = rad.KursEUR * kursEURDKK;
-          const udviklingProcent = ((rad.KursEUR - rad.KøbsKursEUR) / rad.KøbsKursEUR * 100).toFixed(2);
-          const udviklingDKK = ((rad.KursEUR - rad.KøbsKursEUR) * rad.Antal * kursEURDKK).toFixed(2);
-          const farve = udviklingDKK >= 0 ? "lime" : "red";
-          const pil = udviklingDKK >= 0 ? "🔼" : "🔽";
-          samletDKK += rad.KursEUR * rad.Antal * kursEURDKK;
-          html += `
-            <tr>
-              <td>${rad.Navn}</td>
-              <td>${rad.KursEUR.toFixed(2)}</td>
-              <td>${kursDKK.toFixed(2)}</td>
-              <td>${rad.Antal}</td>
-              <td>${rad.KøbsKursEUR.toFixed(2)}</td>
-              <td style="color:${farve}">${pil} ${udviklingProcent}%</td>
-              <td style="color:${farve}">${pil} ${udviklingDKK} DKK</td>
-            </tr>`;
-        });
-        html += `</table>
-          <h3>💰 Samlet porteføljeværdi: ${samletDKK.toFixed(2)} DKK</h3>
-          </div>`;
-        document.getElementById("output").innerHTML = html;
-        document.getElementById("loader").style.display = "none";
-        document.getElementById("pdfBtn").style.display = "inline-block";
-      });
+    function formatDKK(v) {
+      return Number(v).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatEUR(v) {
+      return Number(v).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Klik på knappen "Indlæs og beregn"
-    document.getElementById("loadBtn").addEventListener("click", () => {
-      document.getElementById("loader").style.display = "block";
-      document.getElementById("output").innerHTML = "";
-      document.getElementById("pdfBtn").style.display = "none";
+    function pilSVG(kursEUR, kobEUR) {
+      if (kursEUR > kobEUR) return { svg: SVG_UP, cls: "up", title: "Over købspris" };
+      if (kursEUR < kobEUR) return { svg: SVG_DOWN, cls: "down", title: "Under købspris" };
+      return { svg: SVG_EQUAL, cls: "equal", title: "Uændret vs. købspris" };
+    }
 
-      let fil = document.getElementById("csvFile").files[0];
-      if (!fil) {
-        const csvUrl = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
-        fetch(csvUrl)
-          .then(response => response.text())
-          .then(text => {
-            Papa.parse(text, {
-              header: true,
-              dynamicTyping: true,
-              complete: function(resultat) {
-                beregnData(resultat.data);
-              }
-            });
-          })
-          .catch(err => alert("Kunne ikke hente fonde.csv: " + err));
-        return;
-      }
+    function render(data, eurDkk) {
+      let samletDKK = 0;
 
-      Papa.parse(fil, {
-        header: true,
-        dynamicTyping: true,
-        complete: function(resultat) {
-          beregnData(resultat.data);
-        }
+      let html = `
+        <section id="rapport">
+          <table class="card">
+            <thead>
+              <tr>
+                <th>Navn</th>
+                <th>Kurs (EUR)</th>
+                <th>Kurs (DKK)</th>
+                <th>Antal</th>
+                <th>KøbsKurs (EUR)</th>
+                <th>Udvikling (%)</th>
+                <th>Udvikling (DKK)</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      data.forEach(row => {
+        if (!row || !row.Navn) return;
+
+        const kursEUR = Number(row.KursEUR);
+        const kobEUR  = Number(row.KøbsKursEUR);
+        const antal   = Number(row.Antal);
+
+        const kursDKK = kursEUR * eurDkk;
+        const udvikPct = ((kursEUR - kobEUR) / kobEUR) * 100;
+        const udvikDKK = (kursEUR - kobEUR) * antal * eurDkk;
+
+        samletDKK += kursEUR * antal * eurDkk;
+
+        const arrow = pilSVG(kursEUR, kobEUR);
+        const pctClass = udvikDKK >= 0 ? "pos" : (udvikDKK < 0 ? "neg" : "neu");
+
+        html += `
+          <tr>
+            <td class="left">${row.Navn}</td>
+            <td class="kurs">
+              <span class="kurs-val">${formatEUR(kursEUR)}</span>
+              <span class="arrow-wrap ${arrow.cls}" title="${arrow.title}">${arrow.svg}</span>
+            </td>
+            <td>${formatDKK(kursDKK)}</td>
+            <td>${antal}</td>
+            <td>${formatEUR(kobEUR)}</td>
+            <td class="${pctClass}">${udvikPct.toFixed(2)}%</td>
+            <td class="${pctClass}">${formatDKK(udvikDKK)} DKK</td>
+          </tr>
+        `;
       });
+
+      html += `
+            </tbody>
+          </table>
+          <h3 class="total">💰 Samlet porteføljeværdi: ${formatDKK(samletDKK)} DKK</h3>
+        </section>
+      `;
+
+      document.getElementById("output").innerHTML = html;
+      document.getElementById("pdfBtn").classList.remove("ghost");
+    }
+
+    async function kør() {
+      const loader = document.getElementById("loader");
+      const out = document.getElementById("output");
+      document.getElementById("pdfBtn").classList.add("ghost");
+      loader.style.display = "inline-flex";
+      out.innerHTML = "";
+
+      try {
+        const [eurDkk, csvText] = await Promise.all([
+          hentEURDKK(),
+          fetch(CSV_URL, { cache: "no-store" }).then(r => r.text())
+        ]);
+
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (res) => {
+            render(res.data, eurDkk);
+            loader.style.display = "none";
+          },
+          error: () => {
+            loader.style.display = "none";
+            alert("Kunne ikke læse fonde.csv");
+          }
+        });
+      } catch (e) {
+        loader.style.display = "none";
+        alert("Fejl under hentning: " + e.message);
+      }
+    }
+
+    // Event handlers
+    document.getElementById("reloadBtn").addEventListener("click", kør);
+    document.getElementById("pdfBtn").addEventListener("click", () => {
+      const el = document.getElementById("rapport");
+      html2pdf().set({
+        margin: 10,
+        filename: "aktie-rapport.pdf",
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+      }).from(el).save();
     });
 
-    // Download som PDF
-    document.getElementById("pdfBtn").addEventListener("click", () => {
-      const element = document.getElementById("rapport");
-      const options = {
-        margin: 10,
-        filename: 'aktie-rapport.pdf',
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(options).from(element).save();
-    });
+    // Auto-run ved indlæsning
+    window.addEventListener("DOMContentLoaded", kør);
   </script>
 </body>
 </html>
