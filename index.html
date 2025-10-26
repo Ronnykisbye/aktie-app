@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v8.1 – Udvikling i DKK & %</title>
+  <title>📊 Aktie-App v8.2 – Udvikling i DKK & %</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
 <body>
-  <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
+  <h1>📈 Aktie-App v8.2 – Udvikling i DKK & %</h1>
   <p>Tryk på <b>Indlæs og beregn</b> for at hente dine fonde.</p>
 
   <label for="csvFile">Vælg din CSV-fil med fondskurser:</label><br>
   <input type="file" id="csvFile" accept=".csv"><br><br>
 
   <button id="loadBtn">📊 Indlæs og beregn</button>
+  <button id="pdfBtn" style="display:none;">💾 Download som PDF</button>
 
   <div id="loader" style="display:none; margin-top:20px;">
     <p>⏳ Henter data… Vent venligst</p>
@@ -42,6 +44,7 @@
       let samletDKK = 0;
       hentValutakurs().then(kursEURDKK => {
         let html = `
+          <div id="rapport">
           <table>
             <tr>
               <th>Navn</th><th>Kurs (EUR)</th><th>Kurs (DKK)</th>
@@ -51,10 +54,10 @@
         data.forEach(rad => {
           if (!rad.Navn) return;
           const kursDKK = rad.KursEUR * kursEURDKK;
-          const købDKK = rad.KøbsKursEUR * kursEURDKK;
           const udviklingProcent = ((rad.KursEUR - rad.KøbsKursEUR) / rad.KøbsKursEUR * 100).toFixed(2);
           const udviklingDKK = ((rad.KursEUR - rad.KøbsKursEUR) * rad.Antal * kursEURDKK).toFixed(2);
           const farve = udviklingDKK >= 0 ? "lime" : "red";
+          const pil = udviklingDKK >= 0 ? "🔼" : "🔽";
           samletDKK += rad.KursEUR * rad.Antal * kursEURDKK;
           html += `
             <tr>
@@ -63,13 +66,16 @@
               <td>${kursDKK.toFixed(2)}</td>
               <td>${rad.Antal}</td>
               <td>${rad.KøbsKursEUR.toFixed(2)}</td>
-              <td style="color:${farve}">${udviklingProcent}%</td>
-              <td style="color:${farve}">${udviklingDKK} DKK</td>
+              <td style="color:${farve}">${pil} ${udviklingProcent}%</td>
+              <td style="color:${farve}">${pil} ${udviklingDKK} DKK</td>
             </tr>`;
         });
-        html += `</table><h3>💰 Samlet porteføljeværdi: ${samletDKK.toFixed(2)} DKK</h3>`;
+        html += `</table>
+          <h3>💰 Samlet porteføljeværdi: ${samletDKK.toFixed(2)} DKK</h3>
+          </div>`;
         document.getElementById("output").innerHTML = html;
         document.getElementById("loader").style.display = "none";
+        document.getElementById("pdfBtn").style.display = "inline-block";
       });
     }
 
@@ -77,10 +83,10 @@
     document.getElementById("loadBtn").addEventListener("click", () => {
       document.getElementById("loader").style.display = "block";
       document.getElementById("output").innerHTML = "";
+      document.getElementById("pdfBtn").style.display = "none";
 
       let fil = document.getElementById("csvFile").files[0];
       if (!fil) {
-        // Hvis der ikke er valgt fil, hentes CSV fra GitHub
         const csvUrl = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
         fetch(csvUrl)
           .then(response => response.text())
@@ -104,6 +110,18 @@
           beregnData(resultat.data);
         }
       });
+    });
+
+    // Download som PDF
+    document.getElementById("pdfBtn").addEventListener("click", () => {
+      const element = document.getElementById("rapport");
+      const options = {
+        margin: 10,
+        filename: 'aktie-rapport.pdf',
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(options).from(element).save();
     });
   </script>
 </body>
