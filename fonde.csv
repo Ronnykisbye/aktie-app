@@ -1,4 +1,4 @@
-Navn,ISIN,KursEUR,Antal,KøbsKursEUR
-Nordea Empower Europe Fund BQ,LU3076185084,105.18,405,98.00
-Nordea Invest Europe Enhanced KL 1,FI4000261300,137.70,2632,136.00
-Nordea Invest Global Enhanced KL 1,LU1648400692,184.83,1788,170.00
+Navn,KursEUR,KøbsKursEUR,Antal
+Nordea Empower Europe Fund BQ,105.18,98.00,405
+Nordea Invest Europe Enhanced KL 1,137.70,136.00,2632
+Nordea Invest Global Enhanced KL 1,184.83,170.00,1788
