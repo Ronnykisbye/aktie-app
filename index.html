@@ -3,27 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v9.0 – Udvikling i DKK & %</title>
+  <title>📊 Aktie-App v9.1 – Korrekte valutaer & totaler</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: #eee; text-align: center; margin: 0; padding: 0; }
-    h1 { color: #00aaff; margin-top: 30px; }
-    table { margin: 20px auto; border-collapse: collapse; width: 90%; max-width: 1200px; }
-    th, td { padding: 10px; border-bottom: 1px solid #333; text-align: center; }
-    th { background-color: #00aaff; color: black; }
-    tr:nth-child(even) { background-color: #1b1b1b; }
-    .up { color: lime; }
-    .down { color: red; }
-    .arrow-up svg { fill: lime; width: 20px; height: 20px; vertical-align: middle; }
-    .arrow-down svg { fill: red; width: 20px; height: 20px; vertical-align: middle; transform: rotate(180deg); }
-    button { background-color: #00aaff; color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px; }
-    button:hover { background-color: #0095cc; }
-    #output { margin-top: 20px; }
-    .footer { margin-top: 30px; font-size: 16px; color: #0f0; }
+    body{background:#0d0d0d;color:#eaeaea;font-family:Segoe UI,Arial,sans-serif;text-align:center;margin:0;padding:20px}
+    h1{color:#00b8ff;margin-bottom:8px}
+    p{color:#bbb}
+    table{width:92%;max-width:1200px;margin:20px auto;border-collapse:collapse;border-radius:10px;overflow:hidden}
+    th,td{padding:10px;border-bottom:1px solid #333;text-align:center}
+    th{background:#00b8ff;color:#00111a}
+    td{background:#111}
+    button{background:#00b8ff;color:#00111a;border:none;padding:10px 18px;margin:10px;border-radius:10px;cursor:pointer;font-weight:700}
+    button:hover{background:#0096d6}
+    .status{margin-top:6px;color:#aab8c6;font-size:.95rem}
+    .pos{color:#38d18e;font-weight:700}
+    .neg{color:#ff5a6e;font-weight:700}
+    .neu{color:#aab8c6;font-weight:700}
+    svg.arrow{width:18px;height:18px;vertical-align:middle;margin-left:6px}
+    svg.arrow.up path{fill:#38d18e}
+    svg.arrow.down path{fill:#ff5a6e}
+    .totals{margin:18px 0 0}
+    .totals h3{margin:8px 0}
   </style>
 </head>
-
 <body>
   <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
   <p>Tryk på <b>Opdater</b> for at hente dine fonde og valutakurs.</p>
@@ -31,82 +34,110 @@
   <button id="updateBtn">🔄 Opdater</button>
   <button id="pdfBtn">📄 Download som PDF</button>
 
-  <p id="valutainfo">💶 EUR/DKK = <span id="eurdkk">Henter...</span></p>
+  <div id="status" class="status">Venter på opdatering…</div>
   <div id="output"></div>
 
   <script>
-    // --- Valutakurs-hentning fra ECB ---
-    async function hentValutakurs() {
+    const CSV_URL = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
+    // primær kurskilde med CORS (stabil til GitHub Pages)
+    const FX_URL = "https://open.er-api.com/v6/latest/EUR";
+
+    async function hentEURDKK() {
       try {
-        const res = await fetch("https://api.exchangerate.host/latest?base=EUR&symbols=DKK");
+        const res = await fetch(FX_URL, {cache:"no-store"});
         const data = await res.json();
-        if (!data || !data.rates || !data.rates.DKK) throw new Error("Manglende data");
+        if (!data || !data.rates || !data.rates.DKK) throw new Error("mangler DKK");
         return data.rates.DKK;
       } catch {
-        console.warn("Bruger fallbackkurs 7.45");
-        return 7.45;
+        return 7.45; // fallback (fastkurspolitik)
       }
     }
 
-    // --- Beregn og vis data ---
-    async function visFonde() {
-      document.getElementById("output").innerHTML = "<p>⏳ Henter data… vent venligst</p>";
+    function fmtDKK(v){return Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});}
+    function fmtPct(v){return Number(v).toFixed(2)+"%";}
 
-      const kursEURDKK = await hentValutakurs();
-      document.getElementById("eurdkk").textContent = kursEURDKK.toFixed(2) + " (opdateret " + new Date().toLocaleTimeString("da-DK") + ")";
+    function pilSVG(deltaDKK){
+      if (deltaDKK>0) return '<svg class="arrow up" viewBox="0 0 24 24"><path d="M12 2l6 8h-4v12H10V10H6z"/></svg>';
+      if (deltaDKK<0) return '<svg class="arrow down" viewBox="0 0 24 24"><path d="M12 22l-6-8h4V2h4v12h4z"/></svg>';
+      return '';
+    }
 
-      const csvUrl = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
-      const response = await fetch(csvUrl);
-      const text = await response.text();
-      const data = Papa.parse(text, { header: true, dynamicTyping: true }).data;
+    async function opdater(){
+      const status = document.getElementById("status");
+      const out = document.getElementById("output");
+      status.textContent = "⏳ Henter data…";
 
-      let samletDKK = 0;
-      let html = `
-        <table>
+      const eurDkk = await hentEURDKK();
+      status.textContent = `💶 EUR/DKK = ${eurDkk.toFixed(2)} (opdateret ${new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"})})`;
+
+      const csvText = await fetch(CSV_URL,{cache:"no-store"}).then(r=>r.text());
+      const rows = Papa.parse(csvText,{header:true,dynamicTyping:true,skipEmptyLines:true}).data;
+
+      let totalNowDKK = 0;
+      let totalCostDKK = 0;
+
+      let html = `<table>
+        <thead>
           <tr>
             <th>Navn</th>
-            <th>Kurs (EUR)</th>
+            <th>Kurs</th>
             <th>Kurs (DKK)</th>
             <th>Antal</th>
-            <th>KøbsKurs (EUR)</th>
+            <th>KøbsKurs</th>
             <th>Udvikling (%)</th>
             <th>Udvikling (DKK)</th>
           </tr>
-      `;
+        </thead>
+        <tbody>`;
 
-      data.forEach(rad => {
-        if (!rad.Navn) return;
-        const kursDKK = rad.KursEUR * kursEURDKK;
-        const udviklingPct = ((rad.KursEUR - rad.KøbsKursEUR) / rad.KøbsKursEUR * 100).toFixed(2);
-        const udviklingDKK = ((rad.KursEUR - rad.KøbsKursEUR) * rad.Antal * kursEURDKK).toFixed(2);
-        samletDKK += rad.KursEUR * rad.Antal * kursEURDKK;
+      rows.forEach(row=>{
+        if(!row || !row.Navn) return;
 
-        const farve = udviklingDKK >= 0 ? "up" : "down";
-        const pil = udviklingDKK >= 0
-          ? `<span class="arrow-up"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 4l6 8H6z"/></svg></span>`
-          : `<span class="arrow-down"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 4l6 8H6z"/></svg></span>`;
+        const valuta = String(row.Valuta||"").toUpperCase().trim(); // "EUR" eller "DKK"
+        const kurs = Number(row.Kurs);
+        const kob  = Number(row.KøbsKurs);
+        const antal= Number(row.Antal);
 
-        html += `
-          <tr>
-            <td>${rad.Navn}</td>
-            <td>${rad.KursEUR.toFixed(2)} ${pil}</td>
-            <td>${kursDKK.toFixed(2)}</td>
-            <td>${rad.Antal}</td>
-            <td>${rad.KøbsKursEUR.toFixed(2)}</td>
-            <td class="${farve}">${udviklingPct}%</td>
-            <td class="${farve}">${udviklingDKK} DKK</td>
-          </tr>`;
+        // konverter til DKK kun hvis EUR
+        const kursDKK = valuta==="EUR" ? kurs*eurDkk : kurs;
+        const kobDKK  = valuta==="EUR" ? kob*eurDkk  : kob;
+
+        // Udvikling
+        const deltaPct = ((kurs - kob) / kob) * 100; // i samme valuta
+        const deltaDKK = (kursDKK - kobDKK) * antal;
+
+        // totals
+        totalNowDKK  += kursDKK * antal;
+        totalCostDKK += kobDKK  * antal;
+
+        const cls = deltaDKK>0 ? "pos" : (deltaDKK<0 ? "neg" : "neu");
+        html += `<tr>
+          <td>${row.Navn}</td>
+          <td>${kurs.toFixed(2)} ${valuta}</td>
+          <td>${fmtDKK(kursDKK)} DKK ${pilSVG(deltaDKK)}</td>
+          <td>${antal}</td>
+          <td>${kob.toFixed(2)} ${valuta}</td>
+          <td class="${cls}">${fmtPct(deltaPct)}</td>
+          <td class="${cls}">${fmtDKK(deltaDKK)} DKK</td>
+        </tr>`;
       });
 
-      html += `</table><div class="footer">💰 Samlet porteføljeværdi: ${samletDKK.toFixed(2)} DKK</div>`;
-      document.getElementById("output").innerHTML = html;
+      html += `</tbody></table>`;
+
+      const totalDeltaDKK = totalNowDKK - totalCostDKK;
+      const deltaCls = totalDeltaDKK>0 ? "pos" : (totalDeltaDKK<0 ? "neg" : "neu");
+
+      html += `<div class="totals">
+        <h3 class="pos">💰 Samlet porteføljeværdi: ${fmtDKK(totalNowDKK)} DKK</h3>
+        <h3 class="${deltaCls}">📈 Samlet gevinst/tab siden start: ${fmtDKK(totalDeltaDKK)} DKK</h3>
+      </div>`;
+
+      out.innerHTML = html;
     }
 
-    // --- Event: klik på Opdater ---
-    document.getElementById("updateBtn").addEventListener("click", visFonde);
-
-    // --- Automatisk første visning ---
-    visFonde();
+    document.getElementById("updateBtn").addEventListener("click", opdater);
+    document.getElementById("pdfBtn").addEventListener("click", ()=>window.print());
+    window.addEventListener("DOMContentLoaded", opdater);
   </script>
 </body>
 </html>
