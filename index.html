@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Aktie-App v8.0</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<h1>📊 Aktie-App v8.0 – Udvikling i DKK & %</h1>
+<p>Vælg din CSV-fil med fondskurser:</p>
+<input type="file" id="csvFile" accept=".csv"><br><br>
+<button id="loadBtn">📈 Indlæs og beregn</button>
+
+<div id="output"></div>
+
+<script>
+async function hentValutakurs() {
+  const res = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/EURDKK=X");
+  const data = await res.json();
+  return data.chart.result[0].meta.regularMarketPrice || 7.45;
+}
+
+document.getElementById("loadBtn").addEventListener("click", async () => {
+  const fil = document.getElementById("csvFile").files[0];
+  if (!fil) {
+    alert("Vælg en CSV-fil først!");
+    return;
+  }
+
+  const kursEURDKK = await hentValutakurs();
+  Papa.parse(fil, {
+    header: true,
+    dynamicTyping: true,
+    complete: function(resultat) {
+      const data = resultat.data;
+      let samletDKK = 0;
+      let html = `
+        <table>
+        <tr>
+          <th>Navn</th><th>Kurs (EUR)</th><th>Kurs (DKK)</th>
+          <th>Antal</th><th>KøbsKurs (EUR)</th>
+          <th>Udvikling (%)</th><th>Udvikling (DKK)</th>
+        </tr>`;
+      data.forEach(rad => {
+        if(!rad.Navn) return;
+        const kursDKK = rad.KursEUR * kursEURDKK;
+        const købDKK = rad.KøbsKursEUR * kursEURDKK;
+        const udviklingProcent = ((rad.KursEUR - rad.KøbsKursEUR) / rad.KøbsKursEUR * 100).toFixed(2);
+        const udviklingDKK = ((rad.KursEUR - rad.KøbsKursEUR) * rad.Antal * kursEURDKK).toFixed(2);
+        const farve = udviklingDKK >= 0 ? "green" : "red";
+        samletDKK += rad.KursEUR * rad.Antal * kursEURDKK;
+        html += `
+          <tr>
+            <td>${rad.Navn}</td>
+            <td>${rad.KursEUR.toFixed(2)}</td>
+            <td>${kursDKK.toFixed(2)}</td>
+            <td>${rad.Antal}</td>
+            <td>${rad.KøbsKursEUR.toFixed(2)}</td>
+            <td style="color:${farve}">${udviklingProcent}%</td>
+            <td style="color:${farve}">${udviklingDKK} DKK</td>
+          </tr>`;
+      });
+      html += `</table><h3>💰 Samlet porteføljeværdi: ${samletDKK.toFixed(2)} DKK</h3>`;
+      document.getElementById("output").innerHTML = html;
+    }
+  });
+});
+</script>
+</body>
+</html>
