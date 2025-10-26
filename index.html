@@ -3,117 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📈 Aktie-App v8.2 – Udvikling i DKK & %</title>
+  <title>📈 Aktie-App v8.3 – Udvikling i DKK & %</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background:#0d0d0d; color:#eee; text-align:center; margin:0; }
-    h1 { color:#00b8ff; margin-top:25px; }
-    table { border-collapse:collapse; width:90%; margin:20px auto; }
-    th, td { border-bottom:1px solid #333; padding:10px; }
-    th { background:#00b8ff; color:black; }
+    body { background:#0d0d0d; color:#eaeaea; font-family:"Segoe UI",Arial,sans-serif; text-align:center; margin:0; padding:20px;}
+    h1 { color:#00b8ff; margin-bottom:8px;}
+    p { color:#bbb; }
+    table { width:90%; margin:20px auto; border-collapse:collapse; border-radius:10px; overflow:hidden;}
+    th, td { padding:10px; border-bottom:1px solid #333;}
+    th { background:#00b8ff; color:#000; }
     td { background:#111; }
-    button { background:#00b8ff; color:black; border:none; padding:10px 20px; margin:10px; border-radius:6px; cursor:pointer; }
+    button { background:#00b8ff; color:#000; border:none; padding:10px 20px; margin:10px; border-radius:8px; cursor:pointer; font-weight:600;}
     button:hover { background:#0095d9; }
-    .green { color:lime; }
-    .red { color:#ff4040; }
-    .status { font-size:0.9rem; margin-top:10px; color:#bbb; }
-    .arrow-up { width:24px; height:24px; fill:lime; vertical-align:middle; }
-    .arrow-down { width:24px; height:24px; fill:red; vertical-align:middle; }
-    #output { margin-top:20px; }
+    .green { color:lime; font-weight:600;}
+    .red { color:#ff4040; font-weight:600;}
+    .status { margin-top:10px; color:#aaa; font-size:0.9rem;}
+    svg.arrow { width:18px; height:18px; vertical-align:middle; margin-left:4px;}
+    svg.arrow.up path { fill:lime; }
+    svg.arrow.down path { fill:#ff4040; }
+    h3 { color:lime; margin-top:20px; }
+    @media (max-width:700px){ th:nth-child(5), td:nth-child(5){display:none;} }
   </style>
 </head>
 
 <body>
   <h1>📊 Udvikling siden 10/09/2025 (DKK & %)</h1>
   <p>Tryk på <b>Opdater</b> for at hente dine fonde og valutakurs.</p>
-
   <button id="updateBtn">🔄 Opdater</button>
   <button id="pdfBtn">📄 Download som PDF</button>
 
-  <div class="status" id="status">Venter på opdatering...</div>
+  <div id="status" class="status">Venter på opdatering...</div>
   <div id="output"></div>
 
   <script>
-    // Henter EUR/DKK kurs fra API
     async function hentValutakurs() {
       try {
         const res = await fetch("https://open.er-api.com/v6/latest/EUR");
         const data = await res.json();
         const kurs = data.rates.DKK;
+        const tid = new Date().toLocaleTimeString("da-DK", {hour:"2-digit",minute:"2-digit"});
         document.getElementById("status").innerHTML =
-          `💶 EUR/DKK = ${kurs.toFixed(2)} (fra open.er-api.com)`;
+          `💶 EUR/DKK = ${kurs.toFixed(2)} (opdateret ${tid})`;
         return kurs;
       } catch {
+        const tid = new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"});
         document.getElementById("status").innerHTML =
-          "💶 Bruger fast kurs 7,45 (EUR/DKK)";
+          `💶 Bruger fast kurs 7,45 (senest ${tid})`;
         return 7.45;
       }
     }
 
-    // Beregner udviklingen ud fra fondsliste
     async function opdater() {
-      document.getElementById("status").innerHTML = "⏳ Henter data...";
+      document.getElementById("status").innerText = "⏳ Henter data...";
       const kursEURDKK = await hentValutakurs();
       const csvUrl = "https://raw.githubusercontent.com/Ronnykisbye/aktie-app/main/fonde.csv";
-
       const res = await fetch(csvUrl);
       const csvText = await res.text();
-      const result = Papa.parse(csvText, { header: true, dynamicTyping: true }).data;
+      const result = Papa.parse(csvText, { header:true, dynamicTyping:true }).data;
 
-      let html = `
-        <table>
-          <tr>
-            <th>Navn</th>
-            <th>Kurs (EUR)</th>
-            <th></th>
-            <th>Kurs (DKK)</th>
-            <th>Antal</th>
-            <th>KøbsKurs (EUR)</th>
-            <th>Udvikling (%)</th>
-            <th>Udvikling (DKK)</th>
-          </tr>`;
+      let html = `<table>
+        <tr>
+          <th>Navn</th>
+          <th>Kurs (EUR)</th>
+          <th></th>
+          <th>Kurs (DKK)</th>
+          <th>Antal</th>
+          <th>KøbsKurs (EUR)</th>
+          <th>Udvikling (%)</th>
+          <th>Udvikling (DKK)</th>
+        </tr>`;
 
       let totalDKK = 0;
 
       result.forEach(rad => {
-        if (!rad.Navn) return;
+        if(!rad.Navn) return;
         const kursDKK = rad.KursEUR * kursEURDKK;
-        const købDKK = rad.KøbsKursEUR * kursEURDKK;
         const udviklingPct = ((rad.KursEUR - rad.KøbsKursEUR) / rad.KøbsKursEUR * 100).toFixed(2);
         const udviklingDKK = ((rad.KursEUR - rad.KøbsKursEUR) * rad.Antal * kursEURDKK).toFixed(2);
         const farve = udviklingDKK >= 0 ? "green" : "red";
-        const pilSVG = udviklingDKK >= 0 
-          ? '<svg class="arrow-up" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2l6 8h-4v12h-4V10H6z"/></svg>'
-          : '<svg class="arrow-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 22l-6-8h4V2h4v12h4z"/></svg>';
+        const arrow = udviklingDKK >= 0
+          ? '<svg class="arrow up" viewBox="0 0 24 24"><path d="M12 2l6 8h-4v12h-4V10H6z"/></svg>'
+          : '<svg class="arrow down" viewBox="0 0 24 24"><path d="M12 22l-6-8h4V2h4v12h4z"/></svg>';
+
         totalDKK += rad.KursEUR * rad.Antal * kursEURDKK;
 
-        html += `
-          <tr>
-            <td>${rad.Navn}</td>
-            <td>${rad.KursEUR.toFixed(2)}</td>
-            <td>${pilSVG}</td>
-            <td>${kursDKK.toFixed(2)}</td>
-            <td>${rad.Antal}</td>
-            <td>${rad.KøbsKursEUR.toFixed(2)}</td>
-            <td class="${farve}">${udviklingPct}%</td>
-            <td class="${farve}">${udviklingDKK} DKK</td>
-          </tr>`;
+        html += `<tr>
+          <td>${rad.Navn}</td>
+          <td>${rad.KursEUR.toFixed(2)} ${arrow}</td>
+          <td>${kursDKK.toFixed(2)}</td>
+          <td>${rad.Antal}</td>
+          <td>${rad.KøbsKursEUR.toFixed(2)}</td>
+          <td class="${farve}">${udviklingPct}%</td>
+          <td class="${farve}">${udviklingDKK} DKK</td>
+        </tr>`;
       });
 
       html += `</table>
-      <h3 class="green">💰 Samlet porteføljeværdi: ${totalDKK.toLocaleString("da-DK", { minimumFractionDigits: 2 })} DKK</h3>`;
+        <h3>💰 Samlet porteføljeværdi: ${totalDKK.toLocaleString("da-DK",{minimumFractionDigits:2})} DKK</h3>`;
       document.getElementById("output").innerHTML = html;
-      document.getElementById("status").innerHTML = "✅ Data opdateret";
     }
 
-    // PDF-knap (simpel placeholder)
-    document.getElementById("pdfBtn").addEventListener("click", () => {
-      window.print();
-    });
-
-    // Knap til opdatering
     document.getElementById("updateBtn").addEventListener("click", opdater);
+    document.getElementById("pdfBtn").addEventListener("click", () => window.print());
+    window.addEventListener("DOMContentLoaded", opdater);
   </script>
 </body>
 </html>
