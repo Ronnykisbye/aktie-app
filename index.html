@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v10.2 – Mobilvenlig udgave</title>
+  <title>📊 Aktie-App v10.3 – Mobiltilpasset tabel</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
     body{background:#0d0d0d;color:#eaeaea;font-family:Segoe UI,Arial,sans-serif;text-align:center;margin:0;padding:20px}
     h1{color:#00b8ff;margin-bottom:8px}
     p{color:#bbb}
-    table{width:92%;max-width:1200px;margin:20px auto;border-collapse:collapse;border-radius:10px;overflow:hidden}
-    th,td{padding:10px;border-bottom:1px solid #333;text-align:center}
+    table{width:95%;max-width:1100px;margin:20px auto;border-collapse:collapse;border-radius:10px;overflow:hidden}
+    th,td{padding:8px 6px;border-bottom:1px solid #333;text-align:center;font-size:0.95rem}
     th{background:#00b8ff;color:#00111a}
     td{background:#111}
     button{background:#00b8ff;color:#00111a;border:none;padding:10px 18px;margin:10px;border-radius:10px;cursor:pointer;font-weight:700}
@@ -20,34 +20,31 @@
     .pos{color:#38d18e;font-weight:700}
     .neg{color:#ff5a6e;font-weight:700}
     .neu{color:#aab8c6;font-weight:700}
-    svg.arrow{width:18px;height:18px;vertical-align:middle;margin-left:6px}
+    svg.arrow{width:16px;height:16px;vertical-align:middle;margin-left:4px}
     svg.arrow.up path{fill:#38d18e}
     svg.arrow.down path{fill:#ff5a6e}
     .totals{margin:18px 0 0}
     .totals h3{margin:8px 0}
 
-    /* === Mobilvisning (små skærme under 720px) === */
+    /* === Mobilvisning === */
     @media (max-width: 720px) {
-      body { padding: 12px; }
-      h1 { font-size: 1.1rem; line-height: 1.35; margin: 8px 0; }
-      p { font-size: 0.95rem; margin: 6px 0 12px; }
+      body { padding: 10px; }
+      h1 { font-size: 1.05rem; margin: 6px 0; }
+      p { font-size: 0.9rem; margin: 4px 0 10px; }
 
       button {
         width: 100%;
         max-width: 320px;
-        margin: 8px auto;
+        margin: 6px auto;
         display: block;
       }
 
-      table { width: 100%; font-size: 0.9rem; }
-      th, td { padding: 10px 8px; }
+      table { width: 100%; font-size: 0.85rem; }
+      th, td { padding: 8px 4px; }
 
-      /* Skjul sekundære kolonner på små skærme */
-      th:nth-child(2),  td:nth-child(2)  { display: none; } /* Kurs (original valuta) */
-      th:nth-child(5),  td:nth-child(5)  { display: none; } /* KøbsKurs */
-      th:nth-child(6),  td:nth-child(6)  { display: none; } /* Udvikling (%) */
-
-      .totals h3 { font-size: 1rem; }
+      /* Skjul nogle kolonner på mobil */
+      th:nth-child(5), td:nth-child(5) { display: none; } /* Antal */
+      th:nth-child(6), td:nth-child(6) { display: none; } /* Kurs DKK */
     }
   </style>
 </head>
@@ -67,29 +64,18 @@
     const FX_URL  = "https://api.frankfurter.app/latest?from=EUR&to=DKK";
     const FX_CACHE_KEY = "eurdkk_v1";
 
-    // === Valutakurs med cache i localStorage ===
     async function hentEURDKK() {
       try {
         const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
-        if (cached?.rate) {
-          opdaterBaggrund(cached.rate).catch(()=>{});
-          return cached.rate;
-        }
-        const rate = await hentFraNet();
-        gemRate(rate);
-        return rate;
-      } catch {
-        return 7.46; // fallback
-      }
+        if (cached?.rate) { opdaterBaggrund(cached.rate).catch(()=>{}); return cached.rate; }
+        const rate = await hentFraNet(); gemRate(rate); return rate;
+      } catch { return 7.46; }
     }
 
     async function opdaterBaggrund(nu) {
       try {
         const ny = await hentFraNet();
-        if (Math.abs(ny - nu) >= 0.0001) {
-          gemRate(ny);
-          console.log("Ny EUR/DKK:", ny);
-        }
+        if (Math.abs(ny - nu) >= 0.0001) { gemRate(ny); console.log("Ny EUR/DKK:", ny); }
       } catch(e){ console.warn("Baggrund FX fejl:", e); }
     }
 
@@ -100,10 +86,7 @@
       return d.rates.DKK;
     }
 
-    function gemRate(rate) {
-      localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()}));
-    }
-
+    function gemRate(rate) { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()})); }
     const fmtDKK = v => Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtPct = v => (v>0?"+":"") + v.toFixed(2).replace(".",",") + "%";
     const pilSVG = delta => {
@@ -130,12 +113,11 @@
         <thead>
           <tr>
             <th>Navn</th>
-            <th>Kurs</th>
-            <th>Kurs (DKK)</th>
-            <th>Antal</th>
-            <th>KøbsKurs</th>
             <th>Udvikling (%)</th>
             <th>Udvikling (DKK)</th>
+            <th>Kurs</th>
+            <th>Antal</th>
+            <th>Kurs (DKK)</th>
           </tr>
         </thead><tbody>`;
 
@@ -147,7 +129,6 @@
         let kob      = Number(row.KøbsKurs);
         const antal  = Number(row.Antal);
 
-        // Global Enhanced override
         if (navn.toLowerCase().includes("global enhanced")) kob = 195.80;
 
         const kursDKK = valuta === "EUR" ? kurs * eurDkk : kurs;
@@ -156,8 +137,6 @@
         const valueNow   = kursDKK * antal;
         const valueStart = kobDKK  * antal;
         const deltaDKK   = valueNow - valueStart;
-
-        // Procent beregnes i fondens egen valuta
         const deltaPct   = ((kurs - kob) / kob) * 100;
 
         totalNowDKK  += valueNow;
@@ -166,12 +145,11 @@
         const cls = deltaDKK>0 ? "pos" : deltaDKK<0 ? "neg" : "neu";
         html += `<tr>
           <td>${navn}</td>
-          <td>${kurs.toFixed(2)} ${valuta}</td>
-          <td>${fmtDKK(kursDKK)} DKK ${pilSVG(deltaDKK)}</td>
-          <td>${antal}</td>
-          <td>${kob.toFixed(2)} ${valuta}</td>
           <td class="${cls}">${fmtPct(deltaPct)}</td>
-          <td class="${cls}">${fmtDKK(deltaDKK)} DKK</td>
+          <td class="${cls}">${fmtDKK(deltaDKK)} DKK ${pilSVG(deltaDKK)}</td>
+          <td>${kurs.toFixed(2)} ${valuta}</td>
+          <td>${antal}</td>
+          <td>${fmtDKK(kursDKK)} DKK</td>
         </tr>`;
       });
 
@@ -186,7 +164,6 @@
       </div>`;
 
       out.innerHTML = html;
-
       console.log("Sanity-check",{Totalværdi:totalNowDKK,Samletgevinst:totalDeltaDKK});
     }
 
