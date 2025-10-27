@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v10.1 – Korrekte valutaer og totaler</title>
+  <title>📊 Aktie-App v10.2 – Mobilvenlig udgave</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
@@ -25,6 +25,30 @@
     svg.arrow.down path{fill:#ff5a6e}
     .totals{margin:18px 0 0}
     .totals h3{margin:8px 0}
+
+    /* === Mobilvisning (små skærme under 720px) === */
+    @media (max-width: 720px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.1rem; line-height: 1.35; margin: 8px 0; }
+      p { font-size: 0.95rem; margin: 6px 0 12px; }
+
+      button {
+        width: 100%;
+        max-width: 320px;
+        margin: 8px auto;
+        display: block;
+      }
+
+      table { width: 100%; font-size: 0.9rem; }
+      th, td { padding: 10px 8px; }
+
+      /* Skjul sekundære kolonner på små skærme */
+      th:nth-child(2),  td:nth-child(2)  { display: none; } /* Kurs (original valuta) */
+      th:nth-child(5),  td:nth-child(5)  { display: none; } /* KøbsKurs */
+      th:nth-child(6),  td:nth-child(6)  { display: none; } /* Udvikling (%) */
+
+      .totals h3 { font-size: 1rem; }
+    }
   </style>
 </head>
 
@@ -48,7 +72,6 @@
       try {
         const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
         if (cached?.rate) {
-          // Baggrundsopdatering uden popup
           opdaterBaggrund(cached.rate).catch(()=>{});
           return cached.rate;
         }
@@ -56,7 +79,7 @@
         gemRate(rate);
         return rate;
       } catch {
-        return 7.46; // fallback (fastkurspolitik)
+        return 7.46; // fallback
       }
     }
 
@@ -81,7 +104,6 @@
       localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()}));
     }
 
-    // === Formatering ===
     const fmtDKK = v => Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtPct = v => (v>0?"+":"") + v.toFixed(2).replace(".",",") + "%";
     const pilSVG = delta => {
@@ -90,7 +112,6 @@
       return "";
     };
 
-    // === Hovedfunktion ===
     async function opdater() {
       const status = document.getElementById("status");
       const out = document.getElementById("output");
@@ -120,33 +141,29 @@
 
       rows.forEach(row => {
         if (!row || !row.Navn) return;
-
         const navn   = row.Navn.trim();
         const valuta = String(row.Valuta || "").toUpperCase().trim();
         let kurs     = Number(row.Kurs);
         let kob      = Number(row.KøbsKurs);
         const antal  = Number(row.Antal);
 
-        // 🟦 Særlig regel: Global Enhanced har fast købspris 195,80 DKK
+        // Global Enhanced override
         if (navn.toLowerCase().includes("global enhanced")) kob = 195.80;
 
-        // 🟩 Konverter kun EUR til DKK (ingen dobbeltkonvertering)
         const kursDKK = valuta === "EUR" ? kurs * eurDkk : kurs;
         const kobDKK  = valuta === "EUR" ? kob  * eurDkk : kob;
 
-        // Beregn reelle værdier
         const valueNow   = kursDKK * antal;
         const valueStart = kobDKK  * antal;
         const deltaDKK   = valueNow - valueStart;
 
-        // 🟨 Procent beregnes i fondens egen valuta – ikke i DKK
+        // Procent beregnes i fondens egen valuta
         const deltaPct   = ((kurs - kob) / kob) * 100;
 
         totalNowDKK  += valueNow;
         totalCostDKK += valueStart;
 
         const cls = deltaDKK>0 ? "pos" : deltaDKK<0 ? "neg" : "neu";
-
         html += `<tr>
           <td>${navn}</td>
           <td>${kurs.toFixed(2)} ${valuta}</td>
@@ -170,10 +187,7 @@
 
       out.innerHTML = html;
 
-      console.log("Sanity-check",{
-        Totalværdi:totalNowDKK,
-        Samletgevinst:totalDeltaDKK
-      });
+      console.log("Sanity-check",{Totalværdi:totalNowDKK,Samletgevinst:totalDeltaDKK});
     }
 
     document.getElementById("updateBtn").addEventListener("click", opdater);
