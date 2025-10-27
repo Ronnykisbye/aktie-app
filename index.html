@@ -1,14 +1,17 @@
 <!DOCTYPE html>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00b8ff">
-
 <html lang="da">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 Aktie-App v10.3 – Mobiltilpasset tabel</title>
+  <title>📊 Aktie-App v10.4 – Med offline funktion</title>
+
+  <!-- PWA-manifest og tema -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00b8ff">
+
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
   <style>
     body{background:#0d0d0d;color:#eaeaea;font-family:Segoe UI,Arial,sans-serif;text-align:center;margin:0;padding:20px}
     h1{color:#00b8ff;margin-bottom:8px}
@@ -47,7 +50,7 @@
 
       /* Skjul nogle kolonner på mobil */
       th:nth-child(5), td:nth-child(5) { display: none; } /* Antal */
-      th:nth-child(6), td:nth-child(6) { display: none; } /* Kurs DKK */
+      th:nth-child(6), td:nth-child(6) { display: none; } /* Kurs (DKK) */
     }
   </style>
 </head>
@@ -67,18 +70,29 @@
     const FX_URL  = "https://api.frankfurter.app/latest?from=EUR&to=DKK";
     const FX_CACHE_KEY = "eurdkk_v1";
 
+    // === Valutakurs med cache ===
     async function hentEURDKK() {
       try {
         const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || "null");
-        if (cached?.rate) { opdaterBaggrund(cached.rate).catch(()=>{}); return cached.rate; }
-        const rate = await hentFraNet(); gemRate(rate); return rate;
-      } catch { return 7.46; }
+        if (cached?.rate) {
+          opdaterBaggrund(cached.rate).catch(()=>{});
+          return cached.rate;
+        }
+        const rate = await hentFraNet();
+        gemRate(rate);
+        return rate;
+      } catch {
+        return 7.46;
+      }
     }
 
     async function opdaterBaggrund(nu) {
       try {
         const ny = await hentFraNet();
-        if (Math.abs(ny - nu) >= 0.0001) { gemRate(ny); console.log("Ny EUR/DKK:", ny); }
+        if (Math.abs(ny - nu) >= 0.0001) {
+          gemRate(ny);
+          console.log("Ny EUR/DKK:", ny);
+        }
       } catch(e){ console.warn("Baggrund FX fejl:", e); }
     }
 
@@ -89,7 +103,10 @@
       return d.rates.DKK;
     }
 
-    function gemRate(rate) { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()})); }
+    function gemRate(rate) {
+      localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate, iso:new Date().toISOString()}));
+    }
+
     const fmtDKK = v => Number(v).toLocaleString("da-DK",{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtPct = v => (v>0?"+":"") + v.toFixed(2).replace(".",",") + "%";
     const pilSVG = delta => {
@@ -173,6 +190,13 @@
     document.getElementById("updateBtn").addEventListener("click", opdater);
     document.getElementById("pdfBtn").addEventListener("click", ()=>window.print());
     window.addEventListener("DOMContentLoaded", opdater);
+
+    // === Registrer Service Worker ===
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js")
+        .then(() => console.log("✅ Service Worker registreret"))
+        .catch(err => console.warn("SW fejl:", err));
+    }
   </script>
 </body>
 </html>
