@@ -57,10 +57,10 @@ function formatDateTime(iso) {
 }
 
 /* =========================================================
-   AFSNIT 02 – Render: tom/fejl beskeder
+   AFSNIT 02 – Små UI helpers
    ========================================================= */
 
-function renderEmpty(container, msg) {
+function renderInfoBox(container, msg) {
   container.innerHTML = `
     <div style="
       margin-top:14px;
@@ -79,9 +79,8 @@ function renderEmpty(container, msg) {
 }
 
 /* =========================================================
-   AFSNIT 03 – Render: tabel + totals (2 bokse)
-   - Vi bygger HTML ind i #table containeren
-   - Så matcher vi index.html hvor der kun er <div id="table"></div>
+   AFSNIT 03 – Build UI skeleton i #table container
+   (matcher din index.html hvor #table er en tom div)
    ========================================================= */
 
 function buildSkeleton(container) {
@@ -104,6 +103,10 @@ function buildSkeleton(container) {
   `;
 }
 
+/* =========================================================
+   AFSNIT 04 – Totals (2 tydelige 3D bokse)
+   ========================================================= */
+
 function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
   const totalsEl = document.querySelector(".totals");
   if (!totalsEl) return;
@@ -124,6 +127,10 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
     </h3>
   `;
 }
+
+/* =========================================================
+   AFSNIT 05 – Render tabelrækker
+   ========================================================= */
 
 function renderRows(rows) {
   const tbody = document.querySelector("tbody");
@@ -151,9 +158,12 @@ function renderRows(rows) {
 }
 
 /* =========================================================
-   AFSNIT 04 – OFFICIEL export: renderPortfolio
+   AFSNIT 06 – OFFICIEL export: renderPortfolio
    Matcher main.js:
    renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk })
+   holdings kan være:
+   A) { updatedAt, items:[...] }   <-- det du har nu
+   B) [ ... ]                     <-- fallback
    ========================================================= */
 
 export function renderPortfolio(opts) {
@@ -167,42 +177,46 @@ export function renderPortfolio(opts) {
 
   if (!container) return;
 
-  // 1) Hvis ingen holdings, så vis forklaring (i stedet for “tom skærm”)
-  if (!Array.isArray(holdings) || holdings.length === 0) {
-    buildSkeleton(container);
-    renderTotals({ totalValue: 0, totalProfit: 0, purchaseDateISO: "2025-09-10" });
-    renderEmpty(container, "Der er ingen priser at vise endnu. Tjek at data/prices.json indeholder items (ikke placeholder).");
-    if (statusTextEl) statusTextEl.textContent = "Ingen data (holdings tom).";
-    if (lastUpdatedEl) lastUpdatedEl.textContent = "Senest opdateret: —";
-    return;
-  }
+  // A) Hvis holdings er objekt med items, så brug items
+  const list =
+    Array.isArray(holdings) ? holdings :
+    (holdings && Array.isArray(holdings.items) ? holdings.items : []);
 
-  // 2) Byg UI-skelet
-  buildSkeleton(container);
-
-  // 3) Find “senest opdateret” hvis holdings har meta
-  //    (vi prøver flere mulige felter, så det virker robust)
   const updatedAt =
-    holdings.updatedAt ||
-    holdings[0]?.updatedAt ||
-    holdings[0]?.meta?.updatedAt ||
+    (holdings && holdings.updatedAt) ? holdings.updatedAt :
+    (list[0] && list[0].updatedAt) ? list[0].updatedAt :
     "";
 
+  // Byg UI
+  buildSkeleton(container);
+
+  // Status/LastUpdated
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent = `Senest opdateret: ${formatDateTime(updatedAt)}`;
   }
 
-  // 4) Konverter holdings -> rows (robust mod forskellige feltnavne)
-  const rows = holdings.map(h => {
+  // Hvis ingen data: vis forklaring (men UI er stadig synligt)
+  if (!list.length) {
+    renderTotals({ totalValue: 0, totalProfit: 0, purchaseDateISO: "2025-09-10" });
+    renderInfoBox(container, "Der er ingen priser at vise endnu. Tjek at data/prices.json indeholder items.");
+    if (statusTextEl) statusTextEl.textContent = "Ingen data (holdings tom).";
+    return;
+  }
+
+  // Konverter items -> rows (robust mod feltnavne)
+  const rows = list.map(h => {
     const name = h.name || h.Navn || h.title || "Ukendt";
-    const units = Number(h.units ?? h.antal ?? h.qty ?? 0);
 
-    const currency = (h.currency || h.valuta || h.ccy || "DKK").toUpperCase();
-    const currentPrice = Number(h.currentPrice ?? h.kurs ?? h.price ?? NaN);
+    // antal kan hedde: quantity / Antal / units
+    const units = Number(h.quantity ?? h.Antal ?? h.units ?? h.qty ?? 0);
 
-    // Købspris kan hedde mange ting – vi prøver dem alle
-    const buyPrice = Number(h.buyPrice ?? h.købskurs ?? h.koebskurs ?? h.purchasePrice ?? NaN);
-    const buyCurrency = (h.buyCurrency || h.buyCcy || currency).toUpperCase();
+    // kurs kan hedde: price / Kurs / currentPrice
+    const currency = (h.currency || h.Valuta || h.ccy || "DKK").toUpperCase();
+    const currentPrice = Number(h.price ?? h.Kurs ?? h.currentPrice ?? NaN);
+
+    // købskurs kan hedde: buyPrice / KøbsKurs / købskurs
+    const buyPrice = Number(h.buyPrice ?? h.KøbsKurs ?? h.koebskurs ?? h.purchasePrice ?? NaN);
+    const buyCurrency = (h.buyCurrency || currency).toUpperCase();
 
     const currentPriceDKK = toDKK(currentPrice, currency, eurDkk);
     const buyPriceDKK = toDKK(buyPrice, buyCurrency, eurDkk);
@@ -225,7 +239,7 @@ export function renderPortfolio(opts) {
     };
   });
 
-  // 5) Totals
+  // Totals
   const totalValue = rows.reduce((sum, r) => sum + (Number.isFinite(r.valueNow) ? r.valueNow : 0), 0);
   const totalProfit = rows.reduce((sum, r) => sum + (Number.isFinite(r.profitDKK) ? r.profitDKK : 0), 0);
 
@@ -235,7 +249,6 @@ export function renderPortfolio(opts) {
     purchaseDateISO: "2025-09-10"
   });
 
-  // 6) Tabel
   renderRows(rows);
 
   if (statusTextEl) statusTextEl.textContent = "OK – data vist.";
