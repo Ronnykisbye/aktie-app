@@ -4,7 +4,7 @@ AFSNIT 01 – Imports
 import { PRICES_JSON_PATH, CSV_PATH, FX_URL, FX_CACHE_KEY } from "./config.js";
 
 /*
-AFSNIT 02 – Helpers
+AFSNIT 02 – Helpers (tid/cache/fetch)
 */
 const nowIso = () => new Date().toISOString();
 const cacheBust = (url) => `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
@@ -19,6 +19,14 @@ async function fetchText(url) {
   const res = await fetch(cacheBust(url), { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
+}
+
+function normName(s) {
+  return String(s || "").trim();
+}
+function normKey(s) {
+  // bruges kun som fallback-match (case-insensitive)
+  return String(s || "").trim().toLowerCase();
 }
 
 /*
@@ -57,45 +65,8 @@ function saveFXRate(rate) {
 }
 
 /*
-AFSNIT 04 – Priser
-- 1) Forsøg prices.json (hyppig opdatering)
-- 2) Fallback til fonde.csv
+AFSNIT 04 – CSV parser (holdings)
 */
-export async function getLatestHoldingsPrices() {
-  // 4.1: Prøv prices.json
-  try {
-    const prices = await fetchJson(PRICES_JSON_PATH);
-    if (prices?.items?.length) return normalizePricesJson(prices);
-  } catch (e) {
-    console.warn("prices.json ikke tilgængelig - bruger fallback CSV", e);
-  }
-
-  // 4.2: Fallback til CSV
-  const csvText = await fetchText(CSV_PATH);
-  const rows = parseCsv(csvText);
-  return {
-    updatedAt: nowIso(),
-    source: "csv",
-    items: rows.map(r => ({
-      name: r.Navn,
-      currency: String(r.Valuta || "").toUpperCase(),
-      price: Number(r.Kurs),
-      buyPrice: Number(r.KøbsKurs),
-      quantity: Number(r.Antal),
-    }))
-  };
-}
-
-function normalizePricesJson(prices) {
-  // Forventet format:
-  // { updatedAt: "...", items:[ {name, currency, price, buyPrice, quantity} ] }
-  return {
-    updatedAt: prices.updatedAt || nowIso(),
-    source: prices.source || "prices.json",
-    items: prices.items
-  };
-}
-
 function parseCsv(csvText) {
   // PapaParse er loaded via CDN i index.html
   if (typeof Papa === "undefined") throw new Error("PapaParse mangler");
@@ -105,4 +76,88 @@ function parseCsv(csvText) {
     skipEmptyLines: true
   });
   return parsed.data || [];
+}
+
+/*
+AFSNIT 05 – Merge: fonde.csv (antal/købskurs) + prices.json (aktuel kurs/updatedAt)
+Return-format (det ui.js allerede understøtter):
+{
+  updatedAt: "...",
+  source: "merged",
+  items: [
+    { name, currency, price, buyPrice, quantity }
+  ]
+}
+*/
+export async function getLatestHoldingsPrices() {
+  // 5.1: Hent holdings fra CSV (ALTID – fordi prices.json ikke har antal/købskurs)
+  const csvText = await fetchText(CSV_PATH);
+  const rows = parseCsv(csvText);
+
+  // Byg holdings-liste i stabilt format
+  const holdings = rows
+    .map((r) => ({
+      name: normName(r.Navn),
+      currency: String(r.Valuta || "DKK").toUpperCase(),
+      buyPrice: Number(r.KøbsKurs),
+      quantity: Number(r.Antal),
+      // CSV kan også indeholde en "Kurs" kolonne, men vi bruger den kun som fallback
+      _csvPrice: Number(r.Kurs)
+    }))
+    .filter((h) => h.name); // fjern tomme linjer
+
+  // 5.2: Prøv at hente prices.json (aktuel kurs + updatedAt)
+  let pricesUpdatedAt = nowIso();
+  let pricesSource = "csv-only";
+  let priceByExactName = new Map();
+  let priceByKey = new Map();
+
+  try {
+    const prices = await fetchJson(PRICES_JSON_PATH);
+    pricesUpdatedAt = prices?.updatedAt || pricesUpdatedAt;
+    pricesSource = prices?.source || "prices.json";
+
+    const items = Array.isArray(prices?.items) ? prices.items : [];
+    for (const it of items) {
+      const n = normName(it?.name);
+      if (!n) continue;
+
+      const obj = {
+        name: n,
+        currency: String(it?.currency || "DKK").toUpperCase(),
+        price: Number(it?.price)
+      };
+
+      // 1) præcis match først
+      priceByExactName.set(n, obj);
+      // 2) fallback match (case-insensitive)
+      priceByKey.set(normKey(n), obj);
+    }
+  } catch (e) {
+    console.warn("prices.json ikke tilgængelig – bruger kun CSV data", e);
+  }
+
+  // 5.3: Merge pr. holding (holdings definerer porteføljen)
+  const mergedItems = holdings.map((h) => {
+    const exact = priceByExactName.get(h.name);
+    const fuzzy = priceByKey.get(normKey(h.name));
+    const p = exact || fuzzy || null;
+
+    const currentPrice = p ? p.price : h._csvPrice;
+    const currentCurrency = p ? p.currency : h.currency;
+
+    return {
+      name: h.name,
+      currency: currentCurrency,
+      price: Number(currentPrice),
+      buyPrice: Number(h.buyPrice),
+      quantity: Number(h.quantity)
+    };
+  });
+
+  return {
+    updatedAt: pricesUpdatedAt,
+    source: `merged(${pricesSource}+fonde.csv)`,
+    items: mergedItems
+  };
 }
