@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📊 Aktie-App – Friske kurser</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00bfff" />
+
+  <!-- CSS (opdelt) -->
+  <link rel="stylesheet" href="css/colors.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+
+  <!-- CSV parser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+
+<body>
+  <main>
+    <header class="topbar">
+      <div class="title">
+        <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
+        <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
+      </div>
+
+      <button id="themeToggle" class="ghost" title="Skift mellem dark/light">🌙</button>
+    </header>
+
+    <div class="actions">
+      <button id="refresh">🔄 Opdater</button>
+      <button id="force" class="ghost" title="Henter uden cache">🧊 Tving frisk</button>
+      <button id="pdf" class="ghost">📄 PDF</button>
+    </div>
+
+    <div id="status" class="status">
+      <span id="statusText">Venter på opdatering…</span>
+      <span class="statusSep">•</span>
+      <span id="lastUpdated">Senest opdateret: —</span>
+    </div>
+    <div id="table"></div>
+  </main>
+
+  <!-- App -->
+  <script type="module" src="js/main.js"></script>
+
+  <!-- PDF -->
+  <script>
+    document.getElementById('pdf').addEventListener('click', () => window.print());
+  </script>
+
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(() => console.log('✅ Service Worker registreret'))
+        .catch(err => console.warn('SW fejl:', err));
+    }
+  </script>
+</body>
+</html>

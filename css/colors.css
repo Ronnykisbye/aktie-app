@@ -1,0 +1,35 @@
+/*
+AFSNIT 01 - Farver
+*/
+:root{
+  --bg:#0d0f14;
+  --card:#181c23;
+  --txt:#e6eef7;
+  --muted:#9fb0c3;
+  --brand:#00bfff;
+  --green:#38d18e;
+  --red:#ff5a6e;
+  --equal:#b7c4d6;
+  --border:#233042;
+  --shadow: rgba(0,191,255,.18);
+  --thead1:#0f6ea8;
+  --thead2:#0a5a8a;
+}
+
+/*
+AFSNIT 02 - Light theme (aktiveres via <html data-theme="light">)
+*/
+html[data-theme="light"]{
+  --bg:#f6f8fb;
+  --card:#ffffff;
+  --txt:#0c1722;
+  --muted:#4d657a;
+  --brand:#0077b6;
+  --green:#0f8a52;
+  --red:#cc1f3a;
+  --equal:#3a5164;
+  --border:#d7e2ec;
+  --shadow: rgba(0,119,182,.16);
+  --thead1:#0b6fa8;
+  --thead2:#085e8f;
+}

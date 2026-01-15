@@ -1,0 +1,125 @@
+/*
+AFSNIT 01 - Headings & tekst
+*/
+h1{
+  margin:0 0 6px 0;
+  color:var(--brand);
+  font-weight:800;
+  letter-spacing:.3px;
+}
+
+/*
+AFSNIT 01B - Topbar
+*/
+.topbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  text-align:left;
+}
+.topbar .title{ flex:1; min-width:0; }
+#themeToggle{ white-space:nowrap; }
+
+.hint{
+  margin:0 0 12px 0;
+  color:var(--muted);
+}
+
+.status{
+  margin-top:6px;
+  color:#aab8c6;
+  font-size:.95rem;
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+
+.statusSep{ opacity:.55; }
+
+/*
+AFSNIT 02 - Knapper
+*/
+.actions{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  margin:10px 0 6px;
+  flex-wrap:wrap;
+}
+
+button{
+  background:var(--brand);
+  color:#00121d;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 6px 16px var(--shadow);
+  transition:transform .06s ease, filter .2s ease;
+}
+button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
+button:active{ transform:translateY(1px); }
+
+button.ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+button.ghost:hover{ color:var(--txt); }
+
+/*
+AFSNIT 03 - Table
+*/
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  margin:18px auto 0;
+}
+
+thead th{
+  background:linear-gradient(180deg,var(--thead1),var(--thead2));
+  color:#eaf6ff;
+  font-weight:800;
+  padding:12px 10px;
+  text-align:left;
+}
+
+tbody td{
+  padding:12px 10px;
+  border-top:1px solid var(--border);
+  vertical-align:middle;
+}
+
+td.left{ text-align:left; }
+
+.pos{ color:var(--green); font-weight:700; }
+.neg{ color:var(--red); font-weight:700; }
+.neu{ color:var(--muted); font-weight:700; }
+
+/*
+AFSNIT 04 - Mobil
+*/
+@media (max-width:720px){
+  .topbar{ align-items:flex-start; }
+  .topbar h1{ font-size:1.25rem; }
+  thead th:nth-child(5), tbody td:nth-child(5){ display:none; }
+  thead th:nth-child(6), tbody td:nth-child(6){ display:none; }
+}
+
+/*
+AFSNIT 05 - Totals
+*/
+.totals{
+  margin-top:14px;
+}
+.totals h3{
+  margin:8px 0;
+}

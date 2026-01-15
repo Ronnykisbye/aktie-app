@@ -1,0 +1,101 @@
+/*
+AFSNIT 01 - Typografi
+*/
+h1{
+  margin:0 0 6px 0;
+  text-align:center;
+  color:var(--brand);
+  font-weight:800;
+  letter-spacing:.3px;
+}
+.preamble{
+  text-align:center;
+  color:var(--muted);
+  margin:0 0 12px 0;
+}
+.status{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:.95rem;
+}
+
+/*
+AFSNIT 02 - Knapper
+*/
+.actions{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  margin:10px 0 6px;
+  flex-wrap:wrap;
+}
+button{
+  background:var(--brand);
+  color:#00121d;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 6px 16px var(--shadow);
+  transition:transform .06s ease, filter .2s ease;
+}
+button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
+button:active{ transform:translateY(1px); }
+button.ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+button.ghost:hover{ color:var(--txt); }
+
+/*
+AFSNIT 03 - Tabel
+*/
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  margin:18px auto 0;
+}
+thead th{
+  background:linear-gradient(180deg,var(--thead1),var(--thead2));
+  color:#eaf6ff;
+  font-weight:800;
+  padding:12px 10px;
+  text-align:left;
+}
+tbody td{
+  padding:12px 10px;
+  border-top:1px solid var(--border);
+  vertical-align:middle;
+}
+
+/*
+AFSNIT 04 - Tal & pil
+*/
+.left{ text-align:left; }
+.pos{ color:var(--green); font-weight:700; }
+.neg{ color:var(--red); font-weight:700; }
+.neu{ color:var(--muted); font-weight:700; }
+.arrow{ width:16px; height:16px; vertical-align:middle; margin-left:4px; }
+.arrow.up path{ fill:var(--green); }
+.arrow.down path{ fill:var(--red); }
+
+/*
+AFSNIT 05 - Totals
+*/
+.totals{ margin:18px 0 0 }
+.totals h3{ margin:8px 0 }
+
+/*
+AFSNIT 06 - Mobil (skjul kolonner)
+*/
+@media (max-width:720px){
+  thead th:nth-child(5), tbody td:nth-child(5){ display:none; } /* Antal */
+  thead th:nth-child(6), tbody td:nth-child(6){ display:none; } /* Kurs (DKK) */
+}

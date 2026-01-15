@@ -1,0 +1,6 @@
+/*
+AFSNIT 01 – Samlet CSS entry (import-order)
+*/
+@import url('./colors.css');
+@import url('./layout.css');
+@import url('./components.css');
