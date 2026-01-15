@@ -58,4 +58,141 @@ button{
   font-weight:700;
   cursor:pointer;
   box-shadow:0 6px 16px var(--shadow);
-  transition:transform .06s ease, fil
+  transition:transform .06s ease, filter .2s ease;
+}
+button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
+button:active{ transform:translateY(1px); }
+
+button.ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+button.ghost:hover{ color:var(--txt); }
+
+/*
+AFSNIT 03 - Table
+*/
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  margin:18px auto 0;
+}
+
+thead th{
+  background:linear-gradient(180deg,var(--thead1),var(--thead2));
+  color:#eaf6ff;
+  font-weight:800;
+  padding:12px 10px;
+  text-align:left;
+}
+
+tbody td{
+  padding:12px 10px;
+  border-top:1px solid var(--border);
+  vertical-align:middle;
+}
+
+td.left{ text-align:left; }
+
+.pos{ color:var(--green); font-weight:700; }
+.neg{ color:var(--red); font-weight:700; }
+.neu{ color:var(--muted); font-weight:700; }
+
+/*
+AFSNIT 04 - Mobil
+*/
+@media (max-width:720px){
+  .topbar{ align-items:flex-start; }
+  .topbar h1{ font-size:1.25rem; }
+  thead th:nth-child(5), tbody td:nth-child(5){ display:none; }
+  thead th:nth-child(6), tbody td:nth-child(6){ display:none; }
+}
+
+/*
+AFSNIT 05 - Totals (basis)
+*/
+.totals{
+  margin-top:14px;
+}
+.totals h3{
+  margin:8px 0;
+}
+
+/*
+AFSNIT 06 - Totals som 3D bokse (tydelige tal)
+- Virker på PC / tablet / mobil
+- Virker i dark + light (bruger dine CSS-variabler)
+*/
+.totals{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap:12px;
+  margin:16px 0 6px;
+}
+
+/* Selve "boksen" */
+.totals h3{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+
+  padding:14px 14px;
+  border-radius:14px;
+
+  background: var(--card);
+  border:1px solid var(--border);
+
+  /* 3D / dybde */
+  box-shadow:
+    0 10px 22px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+
+  /* Let "løftet" look */
+  transform: translateY(0);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+
+  /* Typografi */
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: .2px;
+}
+
+/* Hover (PC) */
+.totals h3:hover{
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 28px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+  filter: brightness(1.03);
+}
+
+/* Fremhæv tal-området, hvis vi senere wrapper tal i en span
+   (Trin 2 kan gøre tallet til en "pill" inde i boksen)
+*/
+.totals h3 .value{
+  display:inline-block;
+  margin-left:10px;
+  padding:6px 10px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    0 6px 14px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Mobil: lidt mindre tekst og mere luft */
+@media (max-width:480px){
+  .totals h3{
+    font-size: 1rem;
+    padding: 12px 12px;
+  }
+}
