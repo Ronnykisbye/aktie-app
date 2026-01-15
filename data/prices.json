@@ -1,5 +1,21 @@
 {
-  "updatedAt": "",
-  "source": "placeholder",
-  "items": []
+  "updatedAt": "2026-01-15T19:58:13.824Z",
+  "source": "manual-seed",
+  "items": [
+    {
+      "name": "Nordea Empower Europe Fund BQ",
+      "currency": "EUR",
+      "price": 105.18
+    },
+    {
+      "name": "Nordea Invest Europe Enhanced KL 1",
+      "currency": "DKK",
+      "price": 137.70
+    },
+    {
+      "name": "Nordea Invest Global Enhanced KL 1",
+      "currency": "DKK",
+      "price": 205.80
+    }
+  ]
 }
