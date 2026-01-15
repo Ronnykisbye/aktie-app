@@ -26,9 +26,12 @@ AFSNIT 01B - Topbar
   color:var(--muted);
 }
 
+/*
+AFSNIT 01C - Statuslinje (gør den pæn i både dark/light)
+*/
 .status{
   margin-top:6px;
-  color:#aab8c6;
+  color:var(--muted);
   font-size:.95rem;
   display:flex;
   gap:10px;
@@ -100,63 +103,65 @@ tbody td{
 
 td.left{ text-align:left; }
 
-.pos{ color:var(--green); font-weight:700; }
-.neg{ color:var(--red); font-weight:700; }
-.neu{ color:var(--muted); font-weight:700; }
+.pos{ color:var(--green); font-weight:800; }
+.neg{ color:var(--red); font-weight:800; }
+.neu{ color:var(--muted); font-weight:800; }
 
 /*
-AFSNIT 04 - Mobil
+AFSNIT 04 - Mobil (tabelkolonner)
 */
 @media (max-width:720px){
   .topbar{ align-items:flex-start; }
   .topbar h1{ font-size:1.25rem; }
+
   thead th:nth-child(5), tbody td:nth-child(5){ display:none; }
   thead th:nth-child(6), tbody td:nth-child(6){ display:none; }
 }
 
 /*
-AFSNIT 05 - Totals (basis)
-*/
-.totals{
-  margin-top:14px;
-}
-.totals h3{
-  margin:8px 0;
-}
-
-/*
-AFSNIT 06 - Totals som 3D bokse (tydelige tal)
-- Virker på PC / tablet / mobil
-- Virker i dark + light (bruger dine CSS-variabler)
+AFSNIT 05 - Totals (2 tydelige 3D bokse)
+- Vi bruger de 2 <h3> der allerede findes (ingen JS ændring)
+- På PC: 2 bokse ved siden af hinanden
+- På mobil: under hinanden
 */
 .totals{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap:12px;
-  margin:16px 0 6px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap:14px;
+  margin:18px 0 10px;
 }
 
-/* Selve "boksen" */
+/* På smalle skærme: 1 kolonne */
+@media (max-width:700px){
+  .totals{ grid-template-columns: 1fr; }
+}
+
+/*
+AFSNIT 06 - 3D Card-styling (selve boksene)
+*/
 .totals h3{
+  margin:0;
+  padding:16px 16px;
+  border-radius:16px;
+
+  background: var(--card);
+  border: 1px solid var(--border);
+
+  /* Tydelig 3D / dybde i både dark & light */
+  box-shadow:
+    0 14px 28px rgba(0,0,0,0.16),
+    0 2px 0 rgba(255,255,255,0.06) inset,
+    0 -2px 0 rgba(0,0,0,0.06) inset;
+
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+
+  /* Layout i boksen */
   display:flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
   text-align:center;
-
-  padding:14px 14px;
-  border-radius:14px;
-
-  background: var(--card);
-  border:1px solid var(--border);
-
-  /* 3D / dybde */
-  box-shadow:
-    0 10px 22px rgba(0,0,0,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.18);
-
-  /* Let "løftet" look */
-  transform: translateY(0);
-  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  gap:10px;
 
   /* Typografi */
   font-size: 1.05rem;
@@ -165,34 +170,73 @@ AFSNIT 06 - Totals som 3D bokse (tydelige tal)
   letter-spacing: .2px;
 }
 
-/* Hover (PC) */
 .totals h3:hover{
   transform: translateY(-2px);
   box-shadow:
-    0 14px 28px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.22);
-  filter: brightness(1.03);
+    0 18px 36px rgba(0,0,0,0.20),
+    0 2px 0 rgba(255,255,255,0.08) inset,
+    0 -2px 0 rgba(0,0,0,0.07) inset;
+  filter: brightness(1.02);
 }
 
-/* Fremhæv tal-området, hvis vi senere wrapper tal i en span
-   (Trin 2 kan gøre tallet til en "pill" inde i boksen)
+/*
+AFSNIT 07 - “Tal-knap” (span.value) = ekstra tydeligt
 */
 .totals h3 .value{
-  display:inline-block;
-  margin-left:10px;
-  padding:6px 10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:10px 14px;
   border-radius:999px;
-  background: rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.10);
+
+  /* Neutral 3D pill */
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+
   box-shadow:
-    0 6px 14px rgba(0,0,0,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.15);
+    0 10px 20px rgba(0,0,0,0.16),
+    0 2px 0 rgba(255,255,255,0.10) inset,
+    0 -2px 0 rgba(0,0,0,0.08) inset;
+
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: .2px;
 }
 
-/* Mobil: lidt mindre tekst og mere luft */
+/*
+AFSNIT 08 - Farve/kontrast for gevinst vs tab
+- Vi farver “tal-knappen” tydeligt grøn/rød
+*/
+.totals h3.pos .value{
+  background: rgba(0, 200, 100, 0.16);
+  border-color: rgba(0, 200, 100, 0.38);
+  color: var(--green);
+}
+
+.totals h3.neg .value{
+  background: rgba(255, 70, 70, 0.14);
+  border-color: rgba(255, 70, 70, 0.38);
+  color: var(--red);
+}
+
+/* Hvis neutral (0), så grå */
+.totals h3.neu .value{
+  background: rgba(150,150,150,0.12);
+  border-color: rgba(150,150,150,0.28);
+  color: var(--muted);
+}
+
+/*
+AFSNIT 09 - Små skærme: lidt mindre “tal-knap”
+*/
 @media (max-width:480px){
   .totals h3{
-    font-size: 1rem;
-    padding: 12px 12px;
+    padding:14px 12px;
+    font-size:1rem;
+  }
+  .totals h3 .value{
+    font-size:1.2rem;
+    padding:9px 12px;
   }
 }
