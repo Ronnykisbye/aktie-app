@@ -74,7 +74,7 @@ export function renderTable(rows) {
   const tbody = document.querySelector("tbody");
   if (!tbody) return;
 
-  tbody.innerHTML = rows.map(r => {
+  tbody.innerHTML = (rows || []).map(r => {
     const profitClass = clsByNumber(r.profitDKK);
 
     return `
@@ -92,12 +92,60 @@ export function renderTable(rows) {
 }
 
 /* =========================================================
-   AFSNIT 05 – Render statuslinje (senest opdateret)
-   - appen kan kalde setLastUpdated(text)
+   AFSNIT 05 – Statuslinje (senest opdateret)
    ========================================================= */
 
 export function setLastUpdated(text) {
   const el = document.querySelector("#lastUpdated");
   if (!el) return;
   el.textContent = text || "";
+}
+
+/* =========================================================
+   AFSNIT 06 – renderPortfolio (FIX til main.js import)
+   Hvorfor:
+   - main.js importerer renderPortfolio fra ui.js
+   - Derfor skal ui.js eksportere den, ellers stopper alt.
+   Brug:
+   - renderPortfolio({ rows, totalValue, totalProfit, purchaseDateISO, lastUpdatedText })
+   - eller renderPortfolio(rows) hvis nogen kalder den sådan
+   ========================================================= */
+
+export function renderPortfolio(arg1, arg2, arg3) {
+  // Case A: renderPortfolio({ ... })
+  if (arg1 && typeof arg1 === "object" && !Array.isArray(arg1)) {
+    const {
+      rows,
+      totalValue,
+      totalProfit,
+      purchaseDateISO,
+      lastUpdatedText
+    } = arg1;
+
+    if (lastUpdatedText) setLastUpdated(lastUpdatedText);
+    if (Array.isArray(rows)) renderTable(rows);
+
+    // totals kan være 0, så vi tester på "number"
+    if (typeof totalValue === "number" && typeof totalProfit === "number") {
+      renderTotals({ totalValue, totalProfit, purchaseDateISO });
+    }
+    return;
+  }
+
+  // Case B: renderPortfolio(rows, totalsObj, purchaseDateISO) (fallback)
+  if (Array.isArray(arg1)) {
+    const rows = arg1;
+    renderTable(rows);
+
+    const totalsObj = arg2 || {};
+    const purchaseDateISO = totalsObj.purchaseDateISO || arg3;
+
+    if (typeof totalsObj.totalValue === "number" && typeof totalsObj.totalProfit === "number") {
+      renderTotals({
+        totalValue: totalsObj.totalValue,
+        totalProfit: totalsObj.totalProfit,
+        purchaseDateISO
+      });
+    }
+  }
 }
