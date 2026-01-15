@@ -1,110 +1,103 @@
-/*
-AFSNIT 01 – Imports
-*/
-import { PURCHASE_DATE_ISO } from "./config.js";
+/* =========================================================
+   AFSNIT 01 – Hjælpere (formattering)
+   ========================================================= */
 
-/*
-AFSNIT 02 – Formattere
-*/
-const fmtDKK = (v) => Number(v).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2).replace(".", ",") + "%";
-
-function arrowSymbol(delta) {
-  if (delta > 0) return "▲";
-  if (delta < 0) return "▼";
-  return "•";
+export function fmtDKK(n) {
+  try {
+    return new Intl.NumberFormat("da-DK", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(n)) + " DKK";
+  } catch {
+    return `${n} DKK`;
+  }
 }
 
-/*
-AFSNIT 03 – Rendering
-*/
-export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
-  const { items, updatedAt, source } = holdings;
+export function fmtPct(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "";
+  return new Intl.NumberFormat("da-DK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(x) + " %";
+}
 
-  // Statusline
-  const time = new Date(updatedAt).toLocaleString("da-DK", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
-  // Statuslinje (kort)
-  statusTextEl.textContent = `Kilde: ${source} | EUR/DKK: ${eurDkk.toFixed(4)} | Startdato: ${formatDate(PURCHASE_DATE_ISO)}`;
-  // Seneste opdatering (dato + klokkeslæt)
-  lastUpdatedEl.textContent = `Senest opdateret: ${time}`;
+/* =========================================================
+   AFSNIT 02 – Klasse til positiv/negativ/neutral
+   ========================================================= */
 
-  let totalNowDKK = 0;
-  let totalCostDKK = 0;
+export function clsByNumber(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "neu";
+  if (x > 0) return "pos";
+  if (x < 0) return "neg";
+  return "neu";
+}
 
-  let html = `
-    <table>
-      <thead>
-        <tr>
-          <th>Navn</th>
-          <th>Udvikling (%)</th>
-          <th>Udvikling (DKK)</th>
-          <th>Kurs</th>
-          <th>Antal</th>
-          <th>Kurs (DKK)</th>
-        </tr>
-      </thead>
-      <tbody>
+/* =========================================================
+   AFSNIT 03 – Render totals (3D bokse + 3D tal-pill)
+   VIGTIGT:
+   - Bokse styles via .totals h3 i components.css
+   - Tallene får <span class="value"> ... </span>
+   ========================================================= */
+
+export function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
+  const totalsEl = document.querySelector(".totals");
+  if (!totalsEl) return;
+
+  const dateText = purchaseDateISO
+    ? purchaseDateISO.split("-").reverse().join(".")
+    : "";
+
+  const profitClass = clsByNumber(totalProfit);
+
+  totalsEl.innerHTML = `
+    <h3>
+      Samlet porteføljeværdi:
+      <span class="value">${fmtDKK(totalValue)}</span>
+    </h3>
+
+    <h3 class="${profitClass}">
+      Samlet gevinst/tab siden ${dateText}:
+      <span class="value">${fmtDKK(totalProfit)}</span>
+    </h3>
   `;
+}
 
-  for (const row of items) {
-    if (!row || !row.name) continue;
+/* =========================================================
+   AFSNIT 04 – Render tabel
+   Forventer rows med:
+   { name, units, buyPrice, currentPrice, valueNow, profitDKK, profitPct }
+   ========================================================= */
 
-    const name = String(row.name).trim();
-    const currency = String(row.currency || "").toUpperCase().trim();
-    const price = Number(row.price);
-    const buyPrice = Number(row.buyPrice);
-    const quantity = Number(row.quantity);
+export function renderTable(rows) {
+  const tbody = document.querySelector("tbody");
+  if (!tbody) return;
 
-    const priceDKK = currency === "EUR" ? price * eurDkk : price;
-    const buyDKK = currency === "EUR" ? buyPrice * eurDkk : buyPrice;
+  tbody.innerHTML = rows.map(r => {
+    const profitClass = clsByNumber(r.profitDKK);
 
-    const valueNow = priceDKK * quantity;
-    const valueStart = buyDKK * quantity;
-    const deltaDKK = valueNow - valueStart;
-    const deltaPct = buyPrice ? ((price - buyPrice) / buyPrice) * 100 : 0;
-
-    totalNowDKK += valueNow;
-    totalCostDKK += valueStart;
-
-    const cls = deltaDKK > 0 ? "pos" : deltaDKK < 0 ? "neg" : "neu";
-
-    html += `
+    return `
       <tr>
-        <td class="left">${escapeHtml(name)}</td>
-        <td class="${cls}">${fmtPct(deltaPct)}</td>
-        <td class="${cls}">${fmtDKK(deltaDKK)} DKK ${arrowSymbol(deltaDKK)}</td>
-        <td>${price.toFixed(2)} ${currency}</td>
-        <td>${quantity}</td>
-        <td>${fmtDKK(priceDKK)} DKK</td>
+        <td class="left">${r.name ?? ""}</td>
+        <td>${r.units ?? ""}</td>
+        <td>${fmtDKK(r.buyPrice)}</td>
+        <td>${fmtDKK(r.currentPrice)}</td>
+        <td>${fmtDKK(r.valueNow)}</td>
+        <td class="${profitClass}">${fmtDKK(r.profitDKK)}</td>
+        <td class="${profitClass}">${fmtPct(r.profitPct)}</td>
       </tr>
     `;
-  }
-
-  html += "</tbody></table>";
-
-  const totalDeltaDKK = totalNowDKK - totalCostDKK;
-  const totalCls = totalDeltaDKK > 0 ? "pos" : totalDeltaDKK < 0 ? "neg" : "neu";
-
-  html += `
-    <div class="totals">
-      <h3 class="pos">Samlet porteføljeværdi: ${fmtDKK(totalNowDKK)} DKK</h3>
-      <h3 class="${totalCls}">Samlet gevinst/tab siden ${formatDate(PURCHASE_DATE_ISO)}: ${fmtDKK(totalDeltaDKK)} DKK</h3>
-    </div>
-  `;
-
-  container.innerHTML = html;
+  }).join("");
 }
 
-function formatDate(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("da-DK");
-}
+/* =========================================================
+   AFSNIT 05 – Render statuslinje (senest opdateret)
+   - appen kan kalde setLastUpdated(text)
+   ========================================================= */
 
-function escapeHtml(str) {
-  return str
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+export function setLastUpdated(text) {
+  const el = document.querySelector("#lastUpdated");
+  if (!el) return;
+  el.textContent = text || "";
 }
