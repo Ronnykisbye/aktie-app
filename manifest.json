@@ -1,21 +1,32 @@
 {
   "name": "Aktie-App",
   "short_name": "Aktier",
-  "start_url": "./index.html",
+  "description": "Udvikling siden 10/09/2025 (DKK & %) for Nordea fonde/puljer.",
+  "lang": "da-DK",
+  "dir": "ltr",
+
+  "id": "/aktie-app/",
+  "start_url": "/aktie-app/",
+  "scope": "/aktie-app/",
+
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+
   "background_color": "#0d0d0d",
   "theme_color": "#00b8ff",
+
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/aktie-app/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "/aktie-app/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
