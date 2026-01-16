@@ -1,0 +1,65 @@
+# =========================================================
+# AFSNIT 01 – Navn + triggers
+# - Kører dagligt + kan startes manuelt
+# =========================================================
+name: Update prices.json (daily)
+
+on:
+  schedule:
+    # Kører hver dag kl. 18:05 UTC (ca. 19:05 DK vinter / 20:05 DK sommer)
+    - cron: "5 18 * * *"
+  workflow_dispatch: {}
+
+# =========================================================
+# AFSNIT 02 – Permissions
+# - Giver workflow lov til at committe tilbage til repo
+# =========================================================
+permissions:
+  contents: write
+
+# =========================================================
+# AFSNIT 03 – Job
+# =========================================================
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------------------------------------------------------
+      # AFSNIT 04 – Checkout
+      # ---------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------
+      # AFSNIT 05 – Node.js
+      # ---------------------------------------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # ---------------------------------------------------------
+      # AFSNIT 06 – Run fetch script
+      # - Skriver data/prices.json
+      # ---------------------------------------------------------
+      - name: Fetch latest prices
+        run: node scripts/fetch_prices.mjs
+
+      # ---------------------------------------------------------
+      # AFSNIT 07 – Commit only if changed
+      # ---------------------------------------------------------
+      - name: Commit and push if changed
+        run: |
+          git status --porcelain
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/prices.json
+          git commit -m "chore: update prices.json (auto)"
+          git push
