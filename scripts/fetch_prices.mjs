@@ -1,241 +1,212 @@
 /**
- * AFSNIT 01 - Formaal
- * - Henter friske kurser og skriver data/prices.json
- * - Designet til GitHub Actions (ingen hemmelige API-nogler).
+ * =========================================================
+ * AFSNIT 01 – Formaal
+ * =========================================================
+ * Stabil auto-opdatering til data/prices.json via GitHub Actions:
+ * - Nordea Invest Europe Enhanced KL 1 (DKK)  -> Nordnet (Senest ... DKK)
+ * - Nordea Invest Global Enhanced KL 1 (DKK)  -> Nordnet (Senest ... DKK)
+ * - Nordea Empower Europe Fund BQ (EUR)       -> FundConnect (Indre værdi ...)
+ *
+ * Robusthed:
+ * - Hvis parsing fejler: brug forrige pris fra data/prices.json (fallback)
+ * - Workflow maa ikke stoppe pga. små ændringer på websites
+ * - updatedAt opdateres kun når mindst én fond er hentet "live"
  */
 
 import fs from "node:fs";
 import path from "node:path";
 
-const TODAY_RATES_URL = "https://www.nordeafunds.com/da/investorinformation/dagens-kurser";
-
-const FUND_SOURCES = [
+/**
+ * =========================================================
+ * AFSNIT 02 – Konfiguration (stabile URL'er)
+ * =========================================================
+ */
+const SOURCES = [
   {
     name: "Nordea Invest Europe Enhanced KL 1",
     currency: "DKK",
-    type: "todays_rates",
-    // Nordea kan ændre visningen af navnet på "dagens kurser" (små variationer)
-    // Vi prøver flere match-strenge i prioriteret rækkefølge.
-    match: [
-      "Europe Enhanced KL 1",
-      "Invest Europe Enhanced",
-      "Europe Enhanced"
-    ]
+    url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-europe-enhanced-ndieuenhkl1-xcse",
+    parser: "nordnet_dkk"
   },
   {
     name: "Nordea Invest Global Enhanced KL 1",
     currency: "DKK",
-    type: "todays_rates",
-    match: [
-      "Global Enhanced KL 1",
-      "Invest Global Enhanced",
-      "Global Enhanced"
-    ]
+    url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-global-enhanced-ndiglenhkl1-xcse",
+    parser: "nordnet_dkk"
   },
   {
     name: "Nordea Empower Europe Fund BQ",
     currency: "EUR",
-    type: "fund_page_nav",
-    url: "https://www.nordeafunds.com/da/fonde/empower-europe-fund-bq",
-    // Finder tallet efter "Regnskabsmæssige indre værdi" (DK format)
-    navRegex: /Regnskabsmæssige\s+indre\s+værdi[^\d]*([0-9]{1,4}\,[0-9]{1,6})/i
+    // FundConnect (offentlig side) viser "Indre værdi ..."
+    url: "https://fundsnow.os.fundconnect.com/solutions/default/fundinfo?clientID=DKNB&currency=DKK&isin=LU3076185670&language=da-DK&shelves=DKNB",
+    parser: "fundconnect_nav"
   }
 ];
 
 /**
- * AFSNIT 02 - CSV indlæsning
+ * =========================================================
+ * AFSNIT 03 – Utilities
+ * =========================================================
  */
-function readFondeCsv(csvPath) {
-  const csv = fs.readFileSync(csvPath, "utf8");
-  const lines = csv.split(/\r?\n/).filter(Boolean);
-  const header = lines.shift().split(";").map((s) => s.trim());
-
-  const rows = lines.map((line) => {
-    const parts = line.split(";");
-    const row = {};
-    header.forEach((h, i) => (row[h] = (parts[i] ?? "").trim()));
-    return row;
-  });
-  return rows;
+function nowIso() {
+  return new Date().toISOString();
 }
 
-/**
- * AFSNIT 03 - Fetch helpers
- */
+function readJsonSafe(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonPretty(filePath, obj) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(obj, null, 2));
+}
+
 async function fetchText(url) {
   const res = await fetch(url, {
     headers: {
-      "user-agent": "Mozilla/5.0 (GitHubActions; Aktie-App)"
+      // lille "real browser" UA reducerer risiko for blokering
+      "user-agent": "Mozilla/5.0 (GitHubActions; Aktie-App; +https://github.com/ronnykisbye/aktie-app)",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     }
   });
+
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
 }
 
-function dkNumberToFloat(str) {
-  // "146,50" -> 146.50
-  return Number(String(str).replace(/\./g, "").replace(",", "."));
+function dkToFloat(s) {
+  // "146,20" -> 146.20
+  const t = String(s).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(t);
+  if (!Number.isFinite(n)) throw new Error(`Kunne ikke parse DK tal: ${s}`);
+  return n;
+}
+
+function dotToFloat(s) {
+  // "779.85" -> 779.85
+  const n = Number(String(s).trim().replace(",", "."));
+  if (!Number.isFinite(n)) throw new Error(`Kunne ikke parse tal: ${s}`);
+  return n;
 }
 
 /**
- * AFSNIT 04 - Parsere
+ * =========================================================
+ * AFSNIT 04 – Parsere
+ * =========================================================
  */
-function parseTodaysRates(html, matchList) {
-  // Strategy: Find et vindue af tekst omkring navnet og grib foerste tal efter "Salgskurs"
-  const windowSize = 2500;
-  const hay = html.toLowerCase();
-
-  const candidates = Array.isArray(matchList) ? matchList : [matchList];
-  let usedMatch = null;
-  let idx = -1;
-
-  for (const m of candidates) {
-    const i = hay.indexOf(String(m).toLowerCase());
-    if (i !== -1) {
-      usedMatch = m;
-      idx = i;
-      break;
-    }
-  }
-
-  if (idx === -1) {
-    throw new Error(
-      `Kunne ikke finde nogen af disse matches paa dagens-kurser siden: ${candidates.join(" | ")}`
-    );
-  }
-
-  const start = Math.max(0, idx - windowSize);
-  const end = Math.min(html.length, idx + windowSize);
-  const chunk = html.slice(start, end);
-
-  // Salgskurs 146,50 (eller lign.)
-  const salg = chunk.match(/Salgskurs\s*([0-9]{1,4}\,[0-9]{1,6})/i);
-  if (salg?.[1]) return dkNumberToFloat(salg[1]);
-
-  // Fallback: Indre vaerdi 146,50
-  const indre = chunk.match(/Indre\s+værdi\s*([0-9]{1,4}\,[0-9]{1,6})/i);
-  if (indre?.[1]) return dkNumberToFloat(indre[1]);
-
-  throw new Error(`Kunne ikke parse kurs for match '${usedMatch}'`);
+function parseNordnetDKK(html) {
+  // Nordnet-side indeholder typisk: "Senest 146,20 DKK"
+  const m = html.match(/Senest\s+([0-9]{1,4},[0-9]{1,6})\s*DKK/i);
+  if (!m?.[1]) throw new Error("Nordnet: kunne ikke finde 'Senest <tal> DKK'");
+  return dkToFloat(m[1]);
 }
 
-function parseFundPageNav(html, regex) {
-  const m = html.match(regex);
-  if (!m?.[1]) throw new Error("Kunne ikke finde NAV paa fondsiden");
-  return dkNumberToFloat(m[1]);
+function parseFundconnectNAV(html) {
+  // FundConnect indeholder typisk: "Indre værdi 779.85 pr. 23-12"
+  // NB: Punktum-decimal forekommer ofte her.
+  const m = html.match(/Indre\s+værdi\s+([0-9]{1,6}(?:[.,][0-9]{1,6})?)/i);
+  if (!m?.[1]) throw new Error("FundConnect: kunne ikke finde 'Indre værdi <tal>'");
+  return dotToFloat(m[1]);
 }
 
 /**
- * AFSNIT 05 - Main
+ * =========================================================
+ * AFSNIT 05 – Fallback (forrige prices.json)
+ * =========================================================
+ */
+function buildPrevMap(prev) {
+  const map = new Map();
+  for (const it of prev?.items || []) {
+    const key = String(it?.name || "").trim().toLowerCase();
+    if (!key) continue;
+    map.set(key, it);
+  }
+  return map;
+}
+
+function getPrevPrice(prevMap, name) {
+  const key = String(name || "").trim().toLowerCase();
+  const it = prevMap.get(key);
+  if (!it) return null;
+
+  const p = Number(it.price);
+  if (!Number.isFinite(p)) return null;
+
+  return { price: p, currency: it.currency || null, source: it.source || "previous" };
+}
+
+/**
+ * =========================================================
+ * AFSNIT 06 – Main
+ * =========================================================
  */
 async function main() {
   const repoRoot = process.cwd();
-  const csvRows = readFondeCsv(path.join(repoRoot, "fonde.csv"));
+  const outPath = path.join(repoRoot, "data", "prices.json");
 
-  // 5.0 Læs evt. tidligere data/prices.json som fallback
-  let prev = null;
-  try {
-    const prevPath = path.join(repoRoot, "data/prices.json");
-    if (fs.existsSync(prevPath)) {
-      prev = JSON.parse(fs.readFileSync(prevPath, "utf8"));
-    }
-  } catch {
-    prev = null;
-  }
+  const prev = readJsonSafe(outPath);
+  const prevMap = buildPrevMap(prev);
 
-  const prevByName = new Map(
-    (prev?.items || []).map((it) => [String(it?.name || "").trim().toLowerCase(), it])
-  );
-
-  // 5.1 Hent dagens-kurser side 1 gang
-  const todaysRatesHtml = await fetchText(TODAY_RATES_URL);
-
-  // 5.2 Saml priser
   const items = [];
+  let anyLive = false;
 
-  for (const src of FUND_SOURCES) {
-    let price;
-    let source;
-
+  for (const src of SOURCES) {
     try {
-      if (src.type === "todays_rates") {
-        price = parseTodaysRates(todaysRatesHtml, src.match);
-        source = "nordeafunds/dagens-kurser";
-      } else if (src.type === "fund_page_nav") {
-        const html = await fetchText(src.url);
-        price = parseFundPageNav(html, src.navRegex);
-        source = src.url;
+      const html = await fetchText(src.url);
+
+      let price;
+      if (src.parser === "nordnet_dkk") {
+        price = parseNordnetDKK(html);
+      } else if (src.parser === "fundconnect_nav") {
+        price = parseFundconnectNAV(html);
       } else {
-        throw new Error(`Ukendt type: ${src.type}`);
+        throw new Error(`Ukendt parser: ${src.parser}`);
       }
+
+      items.push({
+        name: src.name,
+        currency: src.currency,
+        price,
+        source: src.url
+      });
+
+      anyLive = true;
     } catch (err) {
-      // Fallback: brug seneste kendte pris fra data/prices.json hvis den findes
-      const key = src.name.trim().toLowerCase();
-      const prevItem = prevByName.get(key);
-      if (prevItem?.price != null && Number.isFinite(Number(prevItem.price))) {
+      // Fallback: brug sidste kendte pris hvis muligt
+      const prevP = getPrevPrice(prevMap, src.name);
+      if (prevP) {
         console.warn(
-          `WARN: ${src.name}: ${String(err?.message || err)} -> bruger forrige pris (${prevItem.price})`
+          `WARN: ${src.name}: ${String(err?.message || err)} -> bruger fallback (${prevP.price})`
         );
-        price = Number(prevItem.price);
-        source = `${prevItem.source || "previous"} (fallback)`;
+        items.push({
+          name: src.name,
+          currency: src.currency,
+          price: prevP.price,
+          source: `${prevP.source} (fallback)`
+        });
       } else {
-        // Hvis vi ikke har en fallback, skal vi fejle højt og tydeligt
-        throw err;
+        // Hvis vi ikke har fallback, skal vi fejle – ellers får vi "tom" data
+        throw new Error(`FATAL: ${src.name}: ingen live pris og ingen fallback. ${String(err?.message || err)}`);
       }
     }
-
-    // Find matching i CSV for koebskurs/antal
-    const matchRow = csvRows.find(
-      (r) => String(r.Navn || "").trim().toLowerCase() === src.name.trim().toLowerCase()
-    );
-
-    items.push({
-      name: src.name,
-      currency: src.currency,
-      price,
-      buyPrice: matchRow
-        ? Number(
-            String(
-              matchRow["KøbsKurs"] ||
-                matchRow["KoebsKurs"] ||
-                matchRow["KøbsKurs"] ||
-                0
-            ).replace(",", ".")
-          )
-        : null,
-      quantity: matchRow ? Number(String(matchRow["Antal"] || 0).replace(",", ".")) : null,
-      source
-    });
   }
+
+  // updatedAt: hvis mindst én live blev hentet, brug NU; ellers behold gammel
+  const updatedAt = anyLive ? nowIso() : (prev?.updatedAt || nowIso());
 
   const out = {
-    // updatedAt opdateres kun hvis der faktisk er ændringer i kurserne.
-    updatedAt: prev?.updatedAt || new Date().toISOString(),
+    updatedAt,
     source: "github-action",
     items
   };
 
-  // 5.3 Hvis priserne reelt ændrer sig, så sæt ny updatedAt
-  const prevItems = prev?.items || [];
-  const prevMap = new Map(
-    prevItems.map((it) => [String(it?.name || "").trim().toLowerCase(), Number(it?.price)])
-  );
-
-  const changed = items.some((it) => {
-    const k = String(it?.name || "").trim().toLowerCase();
-    const before = prevMap.get(k);
-    const after = Number(it?.price);
-    if (!Number.isFinite(after)) return false;
-    if (!Number.isFinite(before)) return true;
-    return Math.abs(after - before) > 0.0000001;
-  });
-
-  if (changed || !prev) {
-    out.updatedAt = new Date().toISOString();
-  }
-
-  fs.writeFileSync(path.join(repoRoot, "data/prices.json"), JSON.stringify(out, null, 2));
-  console.log("Wrote data/prices.json with", items.length, "items");
+  writeJsonPretty(outPath, out);
+  console.log(`Wrote ${outPath} with ${items.length} items. anyLive=${anyLive}`);
 }
 
 main().catch((err) => {
