@@ -8,7 +8,7 @@
       "price": 137.7,
       "buyPrice": null,
       "quantity": null,
-      "source": "previous (fallback)"
+      "source": "previous (fallback) (fallback)"
     },
     {
       "name": "Nordea Invest Global Enhanced KL 1",
@@ -16,7 +16,7 @@
       "price": 205.8,
       "buyPrice": null,
       "quantity": null,
-      "source": "previous (fallback)"
+      "source": "previous (fallback) (fallback)"
     },
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -24,7 +24,7 @@
       "price": 105.18,
       "buyPrice": null,
       "quantity": null,
-      "source": "previous (fallback)"
+      "source": "previous (fallback) (fallback)"
     }
   ]
 }
