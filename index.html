@@ -6,23 +6,38 @@
        ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Udvikling siden 10/09/2025 (DKK & %) for Nordea fonde/puljer." />
   <title>📊 Aktie-App – Friske kurser</title>
 
   <!-- =========================================================
-       AFSNIT 02 – PWA
+       AFSNIT 02 – PWA / Manifest
        ========================================================= -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#00bfff" />
+  <link rel="manifest" href="/aktie-app/manifest.json" />
+  <meta name="theme-color" content="#00b8ff" />
 
   <!-- =========================================================
-       AFSNIT 03 – CSS (opdelt)
+       AFSNIT 03 – Icons (Android/Chrome)
+       ========================================================= -->
+  <link rel="icon" href="/aktie-app/icon-192.png" sizes="192x192" />
+  <link rel="icon" href="/aktie-app/icon-512.png" sizes="512x512" />
+
+  <!-- =========================================================
+       AFSNIT 04 – iOS (Add to Home Screen)
+       ========================================================= -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Aktier" />
+  <link rel="apple-touch-icon" href="/aktie-app/icon-192.png" />
+
+  <!-- =========================================================
+       AFSNIT 05 – CSS (opdelt)
        ========================================================= -->
   <link rel="stylesheet" href="css/colors.css" />
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/components.css" />
 
   <!-- =========================================================
-       AFSNIT 04 – CSV parser
+       AFSNIT 06 – CSV parser
        ========================================================= -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
@@ -30,7 +45,7 @@
 <body>
   <main>
     <!-- =========================================================
-         AFSNIT 05 – Header / title + theme toggle
+         AFSNIT 07 – Header / title + theme toggle
          ========================================================= -->
     <header class="topbar">
       <div class="title">
@@ -42,8 +57,7 @@
     </header>
 
     <!-- =========================================================
-         AFSNIT 06 – Actions
-         (Tving frisk fjernet fra UI)
+         AFSNIT 08 – Actions
          ========================================================= -->
     <div class="actions">
       <button id="refresh">🔄 Opdater</button>
@@ -51,22 +65,7 @@
     </div>
 
     <!-- =========================================================
-         AFSNIT 07 – Skjult kompatibilitets-knap
-         (VIGTIGT: main.js forventer stadig #force findes, ellers crasher appen)
-         ========================================================= -->
-    <button
-      id="force"
-      class="ghost"
-      title="Henter uden cache"
-      style="display:none"
-      aria-hidden="true"
-      tabindex="-1"
-    >
-      🧊 Tving frisk
-    </button>
-
-    <!-- =========================================================
-         AFSNIT 08 – Status + table container
+         AFSNIT 09 – Status + table container
          ========================================================= -->
     <div id="status" class="status">
       <span id="statusText">Venter på opdatering…</span>
@@ -78,23 +77,23 @@
   </main>
 
   <!-- =========================================================
-       AFSNIT 09 – App
+       AFSNIT 10 – App
        ========================================================= -->
   <script type="module" src="js/main.js"></script>
 
   <!-- =========================================================
-       AFSNIT 10 – PDF
+       AFSNIT 11 – PDF
        ========================================================= -->
   <script>
     document.getElementById('pdf').addEventListener('click', () => window.print());
   </script>
 
   <!-- =========================================================
-       AFSNIT 11 – Service Worker
+       AFSNIT 12 – Service Worker (vigtigt for install + offline)
        ========================================================= -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js')
+      navigator.serviceWorker.register('/aktie-app/service-worker.js')
         .then(() => console.log('✅ Service Worker registreret'))
         .catch(err => console.warn('SW fejl:', err));
     }
