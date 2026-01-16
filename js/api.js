@@ -7,7 +7,11 @@ import { PRICES_JSON_PATH, CSV_PATH, FX_URL, FX_CACHE_KEY } from "./config.js";
 AFSNIT 02 – Helpers (tid/cache/fetch)
 */
 const nowIso = () => new Date().toISOString();
-const cacheBust = (url) => `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+
+// Cache-busting: tving altid frisk download af JSON/CSV
+function cacheBust(url) {
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+}
 
 async function fetchJson(url) {
   const res = await fetch(cacheBust(url), { cache: "no-store" });
@@ -25,7 +29,7 @@ function normName(s) {
   return String(s || "").trim();
 }
 function normKey(s) {
-  // bruges kun som fallback-match (case-insensitive)
+  // fallback-match (case-insensitive)
   return String(s || "").trim().toLowerCase();
 }
 
@@ -80,10 +84,10 @@ function parseCsv(csvText) {
 
 /*
 AFSNIT 05 – Merge: fonde.csv (antal/købskurs) + prices.json (aktuel kurs/updatedAt)
-Return-format (det ui.js allerede understøtter):
+Return-format:
 {
   updatedAt: "...",
-  source: "merged",
+  source: "merged(...)",
   items: [
     { name, currency, price, buyPrice, quantity }
   ]
@@ -94,26 +98,27 @@ export async function getLatestHoldingsPrices() {
   const csvText = await fetchText(CSV_PATH);
   const rows = parseCsv(csvText);
 
-  // Byg holdings-liste i stabilt format
+  // Holdings-liste i stabilt format (CSV styrer quantity/buyPrice)
   const holdings = rows
     .map((r) => ({
       name: normName(r.Navn),
       currency: String(r.Valuta || "DKK").toUpperCase(),
       buyPrice: Number(r.KøbsKurs),
       quantity: Number(r.Antal),
-      // CSV kan også indeholde en "Kurs" kolonne, men vi bruger den kun som fallback
       _csvPrice: Number(r.Kurs)
     }))
-    .filter((h) => h.name); // fjern tomme linjer
+    .filter((h) => h.name);
 
-  // 5.2: Prøv at hente prices.json (aktuel kurs + updatedAt)
+  // 5.2: Hent prices.json (aktuel kurs + updatedAt)
   let pricesUpdatedAt = nowIso();
   let pricesSource = "csv-only";
-  let priceByExactName = new Map();
-  let priceByKey = new Map();
+  const priceByExactName = new Map();
+  const priceByKey = new Map();
 
   try {
+    // VIGTIGT: fetchJson bruger cacheBust => altid frisk
     const prices = await fetchJson(PRICES_JSON_PATH);
+
     pricesUpdatedAt = prices?.updatedAt || pricesUpdatedAt;
     pricesSource = prices?.source || "prices.json";
 
@@ -146,6 +151,7 @@ export async function getLatestHoldingsPrices() {
     const currentPrice = p ? p.price : h._csvPrice;
     const currentCurrency = p ? p.currency : h.currency;
 
+    // buyPrice/quantity kommer ALTID fra CSV (ikke fra prices.json)
     return {
       name: h.name,
       currency: currentCurrency,
