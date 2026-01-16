@@ -1,25 +1,37 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
+  <!-- =========================================================
+       AFSNIT 01 – Meta
+       ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>📊 Aktie-App – Friske kurser</title>
 
-  <!-- PWA -->
+  <!-- =========================================================
+       AFSNIT 02 – PWA
+       ========================================================= -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#00bfff" />
 
-  <!-- CSS (opdelt) -->
+  <!-- =========================================================
+       AFSNIT 03 – CSS (opdelt)
+       ========================================================= -->
   <link rel="stylesheet" href="css/colors.css" />
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/components.css" />
 
-  <!-- CSV parser -->
+  <!-- =========================================================
+       AFSNIT 04 – CSV parser
+       ========================================================= -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 
 <body>
   <main>
+    <!-- =========================================================
+         AFSNIT 05 – Header / title + theme toggle
+         ========================================================= -->
     <header class="topbar">
       <div class="title">
         <h1>📈 Udvikling siden 10/09/2025 (DKK & %)</h1>
@@ -29,29 +41,57 @@
       <button id="themeToggle" class="ghost" title="Skift mellem dark/light">🌙</button>
     </header>
 
+    <!-- =========================================================
+         AFSNIT 06 – Actions
+         (Tving frisk fjernet fra UI)
+         ========================================================= -->
     <div class="actions">
       <button id="refresh">🔄 Opdater</button>
-      <button id="force" class="ghost" title="Henter uden cache">🧊 Tving frisk</button>
       <button id="pdf" class="ghost">📄 PDF</button>
     </div>
 
+    <!-- =========================================================
+         AFSNIT 07 – Skjult kompatibilitets-knap
+         (VIGTIGT: main.js forventer stadig #force findes, ellers crasher appen)
+         ========================================================= -->
+    <button
+      id="force"
+      class="ghost"
+      title="Henter uden cache"
+      style="display:none"
+      aria-hidden="true"
+      tabindex="-1"
+    >
+      🧊 Tving frisk
+    </button>
+
+    <!-- =========================================================
+         AFSNIT 08 – Status + table container
+         ========================================================= -->
     <div id="status" class="status">
       <span id="statusText">Venter på opdatering…</span>
       <span class="statusSep">•</span>
       <span id="lastUpdated">Senest opdateret: —</span>
     </div>
+
     <div id="table"></div>
   </main>
 
-  <!-- App -->
+  <!-- =========================================================
+       AFSNIT 09 – App
+       ========================================================= -->
   <script type="module" src="js/main.js"></script>
 
-  <!-- PDF -->
+  <!-- =========================================================
+       AFSNIT 10 – PDF
+       ========================================================= -->
   <script>
     document.getElementById('pdf').addEventListener('click', () => window.print());
   </script>
 
-  <!-- Service Worker -->
+  <!-- =========================================================
+       AFSNIT 11 – Service Worker
+       ========================================================= -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js')
