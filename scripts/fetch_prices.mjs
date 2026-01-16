@@ -14,13 +14,23 @@ const FUND_SOURCES = [
     name: "Nordea Invest Europe Enhanced KL 1",
     currency: "DKK",
     type: "todays_rates",
-    match: "Europe Enhanced KL 1"
+    // Nordea kan ændre visningen af navnet på "dagens kurser" (små variationer)
+    // Vi prøver flere match-strenge i prioriteret rækkefølge.
+    match: [
+      "Europe Enhanced KL 1",
+      "Invest Europe Enhanced",
+      "Europe Enhanced"
+    ]
   },
   {
     name: "Nordea Invest Global Enhanced KL 1",
     currency: "DKK",
     type: "todays_rates",
-    match: "Global Enhanced KL 1"
+    match: [
+      "Global Enhanced KL 1",
+      "Invest Global Enhanced",
+      "Global Enhanced"
+    ]
   },
   {
     name: "Nordea Empower Europe Fund BQ",
@@ -38,9 +48,9 @@ const FUND_SOURCES = [
 function readFondeCsv(csvPath) {
   const csv = fs.readFileSync(csvPath, "utf8");
   const lines = csv.split(/\r?\n/).filter(Boolean);
-  const header = lines.shift().split(";").map(s => s.trim());
+  const header = lines.shift().split(";").map((s) => s.trim());
 
-  const rows = lines.map(line => {
+  const rows = lines.map((line) => {
     const parts = line.split(";");
     const row = {};
     header.forEach((h, i) => (row[h] = (parts[i] ?? "").trim()));
@@ -70,11 +80,29 @@ function dkNumberToFloat(str) {
 /**
  * AFSNIT 04 - Parsere
  */
-function parseTodaysRates(html, match) {
+function parseTodaysRates(html, matchList) {
   // Strategy: Find et vindue af tekst omkring navnet og grib foerste tal efter "Salgskurs"
-  const windowSize = 2000;
-  const idx = html.toLowerCase().indexOf(match.toLowerCase());
-  if (idx === -1) throw new Error(`Kunne ikke finde '${match}' paa dagens-kurser siden`);
+  const windowSize = 2500;
+  const hay = html.toLowerCase();
+
+  const candidates = Array.isArray(matchList) ? matchList : [matchList];
+  let usedMatch = null;
+  let idx = -1;
+
+  for (const m of candidates) {
+    const i = hay.indexOf(String(m).toLowerCase());
+    if (i !== -1) {
+      usedMatch = m;
+      idx = i;
+      break;
+    }
+  }
+
+  if (idx === -1) {
+    throw new Error(
+      `Kunne ikke finde nogen af disse matches paa dagens-kurser siden: ${candidates.join(" | ")}`
+    );
+  }
 
   const start = Math.max(0, idx - windowSize);
   const end = Math.min(html.length, idx + windowSize);
@@ -88,7 +116,7 @@ function parseTodaysRates(html, match) {
   const indre = chunk.match(/Indre\s+værdi\s*([0-9]{1,4}\,[0-9]{1,6})/i);
   if (indre?.[1]) return dkNumberToFloat(indre[1]);
 
-  throw new Error(`Kunne ikke parse kurs for '${match}'`);
+  throw new Error(`Kunne ikke parse kurs for match '${usedMatch}'`);
 }
 
 function parseFundPageNav(html, regex) {
@@ -104,6 +132,21 @@ async function main() {
   const repoRoot = process.cwd();
   const csvRows = readFondeCsv(path.join(repoRoot, "fonde.csv"));
 
+  // 5.0 Læs evt. tidligere data/prices.json som fallback
+  let prev = null;
+  try {
+    const prevPath = path.join(repoRoot, "data/prices.json");
+    if (fs.existsSync(prevPath)) {
+      prev = JSON.parse(fs.readFileSync(prevPath, "utf8"));
+    }
+  } catch {
+    prev = null;
+  }
+
+  const prevByName = new Map(
+    (prev?.items || []).map((it) => [String(it?.name || "").trim().toLowerCase(), it])
+  );
+
   // 5.1 Hent dagens-kurser side 1 gang
   const todaysRatesHtml = await fetchText(TODAY_RATES_URL);
 
@@ -114,41 +157,88 @@ async function main() {
     let price;
     let source;
 
-    if (src.type === "todays_rates") {
-      price = parseTodaysRates(todaysRatesHtml, src.match);
-      source = "nordeafunds/dagens-kurser";
-    } else if (src.type === "fund_page_nav") {
-      const html = await fetchText(src.url);
-      price = parseFundPageNav(html, src.navRegex);
-      source = src.url;
-    } else {
-      throw new Error(`Ukendt type: ${src.type}`);
+    try {
+      if (src.type === "todays_rates") {
+        price = parseTodaysRates(todaysRatesHtml, src.match);
+        source = "nordeafunds/dagens-kurser";
+      } else if (src.type === "fund_page_nav") {
+        const html = await fetchText(src.url);
+        price = parseFundPageNav(html, src.navRegex);
+        source = src.url;
+      } else {
+        throw new Error(`Ukendt type: ${src.type}`);
+      }
+    } catch (err) {
+      // Fallback: brug seneste kendte pris fra data/prices.json hvis den findes
+      const key = src.name.trim().toLowerCase();
+      const prevItem = prevByName.get(key);
+      if (prevItem?.price != null && Number.isFinite(Number(prevItem.price))) {
+        console.warn(
+          `WARN: ${src.name}: ${String(err?.message || err)} -> bruger forrige pris (${prevItem.price})`
+        );
+        price = Number(prevItem.price);
+        source = `${prevItem.source || "previous"} (fallback)`;
+      } else {
+        // Hvis vi ikke har en fallback, skal vi fejle højt og tydeligt
+        throw err;
+      }
     }
 
     // Find matching i CSV for koebskurs/antal
-    const matchRow = csvRows.find(r => String(r.Navn || "").trim().toLowerCase() === src.name.trim().toLowerCase());
+    const matchRow = csvRows.find(
+      (r) => String(r.Navn || "").trim().toLowerCase() === src.name.trim().toLowerCase()
+    );
 
     items.push({
       name: src.name,
       currency: src.currency,
       price,
-      buyPrice: matchRow ? Number(String(matchRow["KøbsKurs"] || matchRow["KoebsKurs"] || matchRow["KøbsKurs"] || 0).replace(",", ".")) : null,
+      buyPrice: matchRow
+        ? Number(
+            String(
+              matchRow["KøbsKurs"] ||
+                matchRow["KoebsKurs"] ||
+                matchRow["KøbsKurs"] ||
+                0
+            ).replace(",", ".")
+          )
+        : null,
       quantity: matchRow ? Number(String(matchRow["Antal"] || 0).replace(",", ".")) : null,
       source
     });
   }
 
   const out = {
-    updatedAt: new Date().toISOString(),
+    // updatedAt opdateres kun hvis der faktisk er ændringer i kurserne.
+    updatedAt: prev?.updatedAt || new Date().toISOString(),
     source: "github-action",
     items
   };
+
+  // 5.3 Hvis priserne reelt ændrer sig, så sæt ny updatedAt
+  const prevItems = prev?.items || [];
+  const prevMap = new Map(
+    prevItems.map((it) => [String(it?.name || "").trim().toLowerCase(), Number(it?.price)])
+  );
+
+  const changed = items.some((it) => {
+    const k = String(it?.name || "").trim().toLowerCase();
+    const before = prevMap.get(k);
+    const after = Number(it?.price);
+    if (!Number.isFinite(after)) return false;
+    if (!Number.isFinite(before)) return true;
+    return Math.abs(after - before) > 0.0000001;
+  });
+
+  if (changed || !prev) {
+    out.updatedAt = new Date().toISOString();
+  }
 
   fs.writeFileSync(path.join(repoRoot, "data/prices.json"), JSON.stringify(out, null, 2));
   console.log("Wrote data/prices.json with", items.length, "items");
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
