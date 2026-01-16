@@ -56,6 +56,16 @@ function formatDateTime(iso) {
   }).format(d);
 }
 
+function formatNowLocal() {
+  return new Intl.DateTimeFormat("da-DK", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date());
+}
+
 /* =========================================================
    AFSNIT 02 – Små UI helpers
    ========================================================= */
@@ -192,7 +202,9 @@ export function renderPortfolio(opts) {
 
   // Status/LastUpdated
   if (lastUpdatedEl) {
-    lastUpdatedEl.textContent = `Senest opdateret: ${formatDateTime(updatedAt)}`;
+    const dataTime = formatDateTime(updatedAt);
+    const nowTime = formatNowLocal();
+    lastUpdatedEl.textContent = `Data opdateret: ${dataTime} • Nu: ${nowTime}`;
   }
 
   // Hvis ingen data: vis forklaring (men UI er stadig synligt)
