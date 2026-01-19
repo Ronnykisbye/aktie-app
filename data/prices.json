@@ -6,19 +6,19 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "currency": "DKK",
       "price": 137.7,
-      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback)"
+      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback) (fallback)"
     },
     {
       "name": "Nordea Invest Global Enhanced KL 1",
       "currency": "DKK",
       "price": 205.8,
-      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback)"
+      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback) (fallback)"
     },
     {
       "name": "Nordea Empower Europe Fund BQ",
       "currency": "EUR",
       "price": 105.18,
-      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback)"
+      "source": "previous (fallback) (fallback) (fallback) (fallback) (fallback) (fallback)"
     }
   ]
 }
