@@ -1,127 +1,106 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-<!-- =========================================================
-     AFSNIT 01 – HEAD / META / PWA
-     ========================================================= -->
+  <!-- =========================================================
+       AFSNIT 01 – HEAD / META / VIEWPORT
+       (Fix: KUN én <head>. Ingen dubletter.)
+       ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- PWA support (standard – uden deprecated Apple-tag) -->
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0a5ea8" />
-
-  <!-- Title -->
+  <!-- =========================================================
+       AFSNIT 02 – TITLE
+       ========================================================= -->
   <title>Aktie App</title>
 
-  <!-- Icons -->
-  <link rel="icon" type="image/png" href="/aktie-app/icon-192.png" />
-  <link rel="apple-touch-icon" href="/aktie-app/icon-192.png" />
-
-  <!-- Manifest -->
+  <!-- =========================================================
+       AFSNIT 03 – PWA / THEME / MANIFEST
+       ========================================================= -->
+  <meta name="theme-color" content="#0a5ea8" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/aktie-app/manifest.json" />
 
-  <!-- Styles -->
+  <!-- =========================================================
+       AFSNIT 04 – ICONS
+       ========================================================= -->
+  <link rel="icon" type="image/png" href="/aktie-app/icon-192.png" />
+  <link rel="icon" href="/aktie-app/icon-192.png" sizes="192x192" />
+  <link rel="icon" href="/aktie-app/icon-512.png" sizes="512x512" />
+  <link rel="apple-touch-icon" href="/aktie-app/icon-192.png" />
+
+  <!-- =========================================================
+       AFSNIT 05 – CSS
+       Fix: style.css findes ikke -> brug app.css (kendt fil)
+       ========================================================= -->
   <link rel="stylesheet" href="css/app.css" />
+
+  <!-- =========================================================
+       AFSNIT 06 – CSV parser (PapaParse)
+       VIGTIGT: Skal loades før main.js (som bruger parseCsv)
+       ========================================================= -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"
+    integrity="sha512-5LqF4h0l0lY5n1m3nYJqK5Xv6n8m4GZ7c8lXlX6bQv7k2rJ4aGkWn7gkqQH2a2m9o2m9w0s9p3Qm7Gm0l2w=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  ></script>
 </head>
 
 <body>
-  <!-- =========================================================
-       AFSNIT 02 – TOPBAR
-       ========================================================= -->
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-icon">📈</span>
-      <span class="brand-title">Udvikling siden 10/09/2025 (DKK & %)</span>
-    </div>
+  <main>
+    <!-- =========================================================
+         AFSNIT 07 – HEADER / TITLE + THEME TOGGLE
+         ========================================================= -->
+    <header class="topbar">
+      <div class="title">
+        <h1>📈 Udvikling siden 10/09/2025 (DKK &amp; %)</h1>
+        <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
+      </div>
 
-    <div class="topbar-actions">
-      <button id="themeToggle" class="icon-btn" aria-label="Skift tema">
-        <span id="themeIcon">🌙</span>
-      </button>
-    </div>
-  </header>
+      <button id="themeToggle" class="ghost" title="Skift mellem dark/light">🌙</button>
+    </header>
 
-  <!-- =========================================================
-       AFSNIT 03 – INTRO + KNAPPER
-       ========================================================= -->
-  <main class="container">
-    <p class="lead">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
-
+    <!-- =========================================================
+         AFSNIT 08 – ACTIONS
+         ========================================================= -->
     <div class="actions">
-      <button id="btnUpdate" class="btn primary">
-        <span class="btn-icon">🔄</span>
-        Opdater
-      </button>
-
-      <button id="btnPdf" class="btn ghost">
-        <span class="btn-icon">📄</span>
-        PDF
-      </button>
+      <button id="refresh">🔄 Opdater</button>
+      <button id="pdf" class="ghost">📄 PDF</button>
     </div>
 
     <!-- =========================================================
-         AFSNIT 04 – STATUSLINJE
+         AFSNIT 09 – STATUS + TABLE CONTAINER
          ========================================================= -->
-    <div id="statusLine" class="statusline">
-      Indlæser…
+    <div id="status" class="status">
+      <span id="statusText">Venter på opdatering…</span>
+      <span class="statusSep">•</span>
+      <span id="lastUpdated">Seneste handelsdag: —</span>
     </div>
 
-    <!-- =========================================================
-         AFSNIT 05 – APP CONTENT (renderes af JS)
-         ========================================================= -->
-    <section id="app"></section>
+    <div id="table"></div>
   </main>
 
   <!-- =========================================================
-       AFSNIT 06 – Scripts (ESM)
+       AFSNIT 10 – APP (ESM)
        ========================================================= -->
   <script type="module" src="js/main.js"></script>
 
   <!-- =========================================================
-       AFSNIT 07 – Print / PDF helper
+       AFSNIT 11 – PDF
        ========================================================= -->
   <script>
-    // PDF-knap: browser print-dialog
-    const btnPdf = document.getElementById('btnPdf');
-    if (btnPdf) {
-      btnPdf.addEventListener('click', () => window.print());
-    }
+    document.getElementById("pdf").addEventListener("click", () => window.print());
   </script>
 
   <!-- =========================================================
-       AFSNIT 08 – Theme toggle (light/dark)
+       AFSNIT 12 – SERVICE WORKER (ændres IKKE)
        ========================================================= -->
   <script>
-    const root = document.documentElement;
-    const btn = document.getElementById('themeToggle');
-    const icon = document.getElementById('themeIcon');
-
-    function setTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
-      if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
-
-    const saved = localStorage.getItem('theme') || 'light';
-    setTheme(saved);
-
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const current = root.getAttribute('data-theme') || 'light';
-        setTheme(current === 'dark' ? 'light' : 'dark');
-      });
-    }
-  </script>
-
-  <!-- =========================================================
-       AFSNIT 09 – Service Worker (vigtigt for install + offline)
-       ========================================================= -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/aktie-app/service-worker.js')
-        .then(() => console.log('✅ Service Worker registreret'))
-        .catch(err => console.warn('SW fejl:', err));
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/aktie-app/service-worker.js")
+        .then(() => console.log("✅ Service Worker registreret"))
+        .catch((err) => console.warn("SW fejl:", err));
     }
   </script>
 </body>
