@@ -187,18 +187,27 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
 
-  /* === A: LABEL === */
+  /* =========================================================
+     AFSNIT 07A – A: LABEL ("Data opdateret" -> "Seneste handelsdag")
+     ========================================================= */
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent =
       "Seneste handelsdag: " + formatDateTimeLocal(updatedAt);
   }
 
-  /* === C: STATUS === */
+  /* =========================================================
+     AFSNIT 07B – C: STATUS (forklarende status)
+     - Hvis updatedAt ikke er i dag: "Ingen nye kurser i dag endnu (X dage gammel)"
+     - Ellers: "OK – data vist."
+     ========================================================= */
   if (statusTextEl) {
-    if (updatedDate && !isSameLocalDate(updatedDate, now)) {
+    // Hvis vi ikke kan læse datoen, viser vi en neutral status
+    if (!updatedDate) {
+      statusTextEl.textContent = "OK – data vist.";
+    } else if (!isSameLocalDate(updatedDate, now)) {
       const days = diffDaysLocal(updatedDate, now);
       statusTextEl.textContent =
-        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel).`;
+        `Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel)`;
     } else {
       statusTextEl.textContent = "OK – data vist.";
     }
