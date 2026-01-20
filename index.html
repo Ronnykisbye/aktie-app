@@ -3,7 +3,6 @@
 <head>
   <!-- =========================================================
        AFSNIT 01 – HEAD / META / VIEWPORT
-       (Fix: KUN én <head>. Ingen dubletter.)
        ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -30,17 +29,15 @@
 
   <!-- =========================================================
        AFSNIT 05 – CSS
-       Fix: style.css findes ikke -> brug app.css (kendt fil)
        ========================================================= -->
   <link rel="stylesheet" href="css/app.css" />
 
   <!-- =========================================================
        AFSNIT 06 – CSV parser (PapaParse)
-       VIGTIGT: Skal loades før main.js (som bruger parseCsv)
+       Fix: Fjern integrity (den var forkert og blokerede ressourcen)
        ========================================================= -->
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"
-    integrity="sha512-5LqF4h0l0lY5n1m3nYJqK5Xv6n8m4GZ7c8lXlX6bQv7k2rJ4aGkWn7gkqQH2a2m9o2m9w0s9p3Qm7Gm0l2w=="
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
   ></script>
