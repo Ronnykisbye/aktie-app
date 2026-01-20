@@ -25,26 +25,20 @@ export function fmtNum(n, digits = 2) {
 export function fmtPct(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  return fmtNum(x, 2) + " %";
+  const sign = x > 0 ? "+" : "";
+  return sign + fmtNum(x, 2) + " %";
 }
 
 export function clsByNumber(n) {
   const x = Number(n);
-  if (!Number.isFinite(x)) return "neu";
+  if (!Number.isFinite(x)) return "";
   if (x > 0) return "pos";
   if (x < 0) return "neg";
-  return "neu";
-}
-
-function toDKK(price, currency, eurDkk) {
-  const p = Number(price);
-  if (!Number.isFinite(p)) return NaN;
-  if ((currency || "DKK").toUpperCase() === "EUR") return p * Number(eurDkk || NaN);
-  return p;
+  return "";
 }
 
 /* =========================================================
-   AFSNIT 02 – Dato / tid helpers (lokal tid)
+   AFSNIT 02 – Dato/tid (lokal) + “dage gammel”
    ========================================================= */
 
 function parseISO(iso) {
@@ -53,8 +47,8 @@ function parseISO(iso) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function formatDateTimeLocal(iso) {
-  const d = parseISO(iso);
+function formatDateTimeLocal(input) {
+  const d = input instanceof Date ? input : parseISO(input);
   if (!d) return "—";
   return new Intl.DateTimeFormat("da-DK", {
     year: "numeric",
@@ -74,103 +68,131 @@ function isSameLocalDate(a, b) {
   );
 }
 
-function diffDaysLocal(a, b) {
-  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.round((db - da) / (1000 * 60 * 60 * 24));
+function diffDaysLocal(older, newer) {
+  if (!older || !newer) return 0;
+
+  // Sammenlign på “dato-niveau” (lokal tid) for stabilt “X dage gammel”
+  const o = new Date(older.getFullYear(), older.getMonth(), older.getDate());
+  const n = new Date(newer.getFullYear(), newer.getMonth(), newer.getDate());
+
+  const ms = n.getTime() - o.getTime();
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  return Math.max(0, days);
 }
 
 /* =========================================================
-   AFSNIT 03 – Små UI helpers
+   AFSNIT 03 – UI helpers (skeleton/boxes)
    ========================================================= */
 
-function renderInfoBox(container, msg) {
+function buildSkeleton(container) {
   container.innerHTML = `
-    <div style="
-      margin-top:14px;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background:var(--card);
-      box-shadow:0 10px 22px rgba(0,0,0,0.10);
-      text-align:center;
-      color:var(--muted);
-      font-weight:700;
-    ">
-      ${msg}
+    <div class="totals-grid" id="totalsGrid"></div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Navn</th>
+            <th>Udvikling (%)</th>
+            <th>Udvikling (DKK)</th>
+            <th>Kurs</th>
+            <th>Antal</th>
+            <th>Kurs (DKK)</th>
+          </tr>
+        </thead>
+        <tbody id="rowsBody"></tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderInfoBox(container, text) {
+  container.innerHTML = `
+    <div class="info-box">
+      ${text}
     </div>
   `;
 }
 
 /* =========================================================
-   AFSNIT 04 – UI skeleton
-   ========================================================= */
-
-function buildSkeleton(container) {
-  container.innerHTML = `
-    <div class="totals"></div>
-    <table>
-      <thead>
-        <tr>
-          <th>Navn</th>
-          <th>Udvikling (%)</th>
-          <th>Udvikling (DKK)</th>
-          <th>Kurs</th>
-          <th>Antal</th>
-          <th>Kurs (DKK)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  `;
-}
-
-/* =========================================================
-   AFSNIT 05 – Totals
+   AFSNIT 04 – Totals (3D bokse)
    ========================================================= */
 
 function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
-  const el = document.querySelector(".totals");
-  if (!el) return;
+  const totalsGrid = document.getElementById("totalsGrid");
+  if (!totalsGrid) return;
 
-  const dateText = purchaseDateISO
-    ? purchaseDateISO.split("-").reverse().join(".")
-    : "—";
+  totalsGrid.innerHTML = `
+    <div class="total-card">
+      <div class="total-title">Samlet porteføljeværdi:</div>
+      <div class="total-pill">${fmtDKK(totalValue)}</div>
+    </div>
 
-  el.innerHTML = `
-    <h3>
-      Samlet porteføljeværdi:
-      <span class="value">${fmtDKK(totalValue)}</span>
-    </h3>
-    <h3 class="${clsByNumber(totalProfit)}">
-      Samlet gevinst/tab siden ${dateText}:
-      <span class="value">${fmtDKK(totalProfit)}</span>
-    </h3>
+    <div class="total-card">
+      <div class="total-title">Samlet gevinst/tab siden ${purchaseDateISO.split("-").reverse().join(".")}:</div>
+      <div class="total-pill ${clsByNumber(totalProfit)}">${fmtDKK(totalProfit)}</div>
+    </div>
   `;
 }
 
 /* =========================================================
-   AFSNIT 06 – Rækker
+   AFSNIT 05 – Tabelrækker
    ========================================================= */
 
 function renderRows(rows) {
-  const tbody = document.querySelector("tbody");
+  const tbody = document.getElementById("rowsBody");
   if (!tbody) return;
 
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.name}</td>
-      <td class="${clsByNumber(r.profitPct)}">${fmtPct(r.profitPct)}</td>
-      <td class="${clsByNumber(r.profitDKK)}">${fmtDKK(r.profitDKK)}</td>
-      <td>${fmtNum(r.currentPrice, 2)} ${r.currency}</td>
-      <td>${fmtNum(r.units, 0)}</td>
-      <td>${fmtDKK(r.currentPriceDKK)}</td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = rows
+    .map(r => {
+      return `
+        <tr>
+          <td>${r.name}</td>
+
+          <td class="${clsByNumber(r.profitPct)}">
+            ${fmtPct(r.profitPct)}
+          </td>
+
+          <td class="${clsByNumber(r.profitDKK)}">
+            ${fmtDKK(r.profitDKK)}
+          </td>
+
+          <td>
+            ${fmtNum(r.currentPrice, 2)} ${r.currency}
+          </td>
+
+          <td>
+            ${fmtNum(r.units, 0)}
+          </td>
+
+          <td>
+            ${fmtDKK(r.currentPriceDKK)}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 }
 
 /* =========================================================
-   AFSNIT 07 – renderPortfolio (OFFICIEL)
+   AFSNIT 06 – Konvertering / beregning
+   ========================================================= */
+
+function toDKK(price, currency, eurDkk) {
+  const p = Number(price);
+  if (!Number.isFinite(p)) return 0;
+
+  const c = (currency || "DKK").toUpperCase();
+
+  if (c === "DKK") return p;
+  if (c === "EUR") return p * Number(eurDkk || 0);
+
+  // fallback: hvis ukendt valuta, så behandl som DKK for ikke at smadre UI
+  return p;
+}
+
+/* =========================================================
+   AFSNIT 07 – Hovedrender: portfolio
    ========================================================= */
 
 export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
@@ -187,29 +209,25 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
 
-  /* =========================================================
-     AFSNIT 07A – A: LABEL ("Data opdateret" -> "Seneste handelsdag")
-     ========================================================= */
+  /* === A: LABEL (tydeligere) === */
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent =
-      "Seneste handelsdag: " + formatDateTimeLocal(updatedAt);
+      "Seneste kurs fra: " + formatDateTimeLocal(updatedAt);
   }
 
-  /* =========================================================
-     AFSNIT 07B – C: STATUS (forklarende status)
-     - Hvis updatedAt ikke er i dag: "Ingen nye kurser i dag endnu (X dage gammel)"
-     - Ellers: "OK – data vist."
-     ========================================================= */
+  /* === C: STATUS (senest tjekket + alder) === */
   if (statusTextEl) {
-    // Hvis vi ikke kan læse datoen, viser vi en neutral status
-    if (!updatedDate) {
-      statusTextEl.textContent = "OK – data vist.";
-    } else if (!isSameLocalDate(updatedDate, now)) {
+    const latestTxt = formatDateTimeLocal(updatedAt);
+    const checkedTxt = formatDateTimeLocal(now);
+
+    if (updatedDate && !isSameLocalDate(updatedDate, now)) {
       const days = diffDaysLocal(updatedDate, now);
       statusTextEl.textContent =
-        `Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel)`;
+        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel). ` +
+        `Seneste kurs: ${latestTxt}. Senest tjekket: ${checkedTxt}.`;
     } else {
-      statusTextEl.textContent = "OK – data vist.";
+      statusTextEl.textContent =
+        `OK – data vist. Seneste kurs: ${latestTxt}. Senest tjekket: ${checkedTxt}.`;
     }
   }
 
@@ -228,7 +246,7 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
     const buyDKK = toDKK(buy, currency, eurDkk);
 
     const value = units * currentDKK;
-    const profit = value - units * buyDKK;
+    const profit = units * (currentDKK - buyDKK);
 
     return {
       name: h.name || "Ukendt",
