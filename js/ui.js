@@ -81,8 +81,9 @@ function diffDaysLocal(older, newer) {
 
 /* =========================================================
    AFSNIT 03 – UI helpers (skeleton/boxes)
-   VIGTIGT: Totals markup matcher CSS i components.css:
-   .totals + 2 x h3 + span.value
+   VIGTIGT:
+   - Totals markup matcher CSS i components.css
+   - Overblik-tabellen er fjernet (kun den store tabel tilbage)
    ========================================================= */
 
 function escapeHtml(s) {
@@ -96,7 +97,9 @@ function escapeHtml(s) {
 
 function buildSkeleton(container) {
   container.innerHTML = `
-    <!-- Totals (3D bokse) -->
+    <!-- =====================================================
+         AFSNIT 03A – TOTALS (3D bokse)
+         ===================================================== -->
     <div class="totals" id="totals">
       <h3 id="totalValueBox">
         Samlet porteføljeværdi:<br>
@@ -110,29 +113,8 @@ function buildSkeleton(container) {
     </div>
 
     <!-- =====================================================
-         AFSNIT 03B – OVERBLIK (3 fonde)
-         Fix:
-         - “Navn” er med
-         - Ingen “Udvikling …” tekst i headers (kun korte labels)
+         AFSNIT 03B – KUN DEN STORE TABEL (mest info)
          ===================================================== -->
-    <div class="table-wrap" style="margin-top:14px;">
-      <table class="data-table">
-        <caption style="caption-side: top; padding: 12px 0; font-weight: 700;">
-          Overblik (3 fonde)
-        </caption>
-        <thead>
-          <tr>
-            <th>Navn</th>
-            <th>%</th>
-            <th>DKK</th>
-            <th>Kurs</th>
-          </tr>
-        </thead>
-        <tbody id="miniBody"></tbody>
-      </table>
-    </div>
-
-    <!-- Tabel (fuld detaljer) -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -185,29 +167,7 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
 }
 
 /* =========================================================
-   AFSNIT 05 – Mini-overblik (3 fonde)
-   ========================================================= */
-
-function renderMini(rows) {
-  const tbody = document.getElementById("miniBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = rows
-    .map(r => {
-      return `
-        <tr>
-          <td>${escapeHtml(r.name)}</td>
-          <td class="${clsByNumber(r.profitPct)}">${fmtPct(r.profitPct)}</td>
-          <td class="${clsByNumber(r.profitDKK)}">${fmtDKK(r.profitDKK)}</td>
-          <td>${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-}
-
-/* =========================================================
-   AFSNIT 06 – Tabelrækker (fuld)
+   AFSNIT 05 – Tabelrækker (stor tabel)
    ========================================================= */
 
 function renderRows(rows) {
@@ -246,7 +206,7 @@ function renderRows(rows) {
 }
 
 /* =========================================================
-   AFSNIT 07 – Konvertering / beregning
+   AFSNIT 06 – Konvertering / beregning
    ========================================================= */
 
 function toDKK(price, currency, eurDkk) {
@@ -262,7 +222,7 @@ function toDKK(price, currency, eurDkk) {
 }
 
 /* =========================================================
-   AFSNIT 08 – Hovedrender: portfolio
+   AFSNIT 07 – Hovedrender: portfolio
    - lastUpdatedEl: “Seneste handelsdag: …”
    - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
@@ -337,6 +297,5 @@ export function renderPortfolio({
     purchaseDateISO: purchaseDateISO || "2025-09-10"
   });
 
-  renderMini(rows);
   renderRows(rows);
 }
