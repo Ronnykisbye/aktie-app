@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="da">
+<html lang="da" data-theme="dark" data-build="2026-01-21-aktieapp-01">
 <head>
   <!-- =========================================================
-       AFSNIT 01 – HEAD / META / VIEWPORT
+       AFSNIT 01 – META / VIEWPORT
        ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,120 +13,123 @@
   <title>Aktie App</title>
 
   <!-- =========================================================
-       AFSNIT 03 – PWA / THEME / MANIFEST
+       AFSNIT 03 – PWA / MANIFEST
        ========================================================= -->
   <meta name="theme-color" content="#0a5ea8" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="/aktie-app/manifest.json" />
+  <link rel="manifest" href="manifest.json" />
 
   <!-- =========================================================
-       AFSNIT 04 – ICONS
+       AFSNIT 04 – CSS
+       VIGTIGT: Vi linker til css/style.css (legacy wrapper),
+       som selv importerer app.css → robust mod caches/404.
        ========================================================= -->
-  <link rel="icon" type="image/png" href="/aktie-app/icon-192.png" />
-  <link rel="icon" href="/aktie-app/icon-192.png" sizes="192x192" />
-  <link rel="icon" href="/aktie-app/icon-512.png" sizes="512x512" />
-  <link rel="apple-touch-icon" href="/aktie-app/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
 
+<body>
   <!-- =========================================================
-       AFSNIT 05 – CSS
+       AFSNIT 05 – APP WRAPPER
        ========================================================= -->
-  <link rel="stylesheet" href="css/app.css" />
+  <div class="app">
+
+    <!-- =========================================================
+         AFSNIT 06 – HEADER
+         ========================================================= -->
+    <header class="header">
+      <div class="title">
+        <span class="logo" aria-hidden="true">📈</span>
+        <h1>Udvikling siden 10/09/2025 (DKK & %)</h1>
+      </div>
+
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Skift tema">
+        🌙
+      </button>
+    </header>
+
+    <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
+
+    <!-- =========================================================
+         AFSNIT 07 – TOP ACTIONS (FAST UI)
+         VIGTIGT: Denne sektion må IKKE ligge inde i #table
+         ========================================================= -->
+    <div class="actions">
+      <button id="refresh" type="button">🔄 Opdater</button>
+      <button id="pdf" type="button" class="ghost">📄 PDF</button>
+      <button id="graph" type="button" class="ghost" title="Vis graf">📈 Graf</button>
+    </div>
+
+    <!-- =========================================================
+         AFSNIT 08 – STATUS (FAST UI)
+         ========================================================= -->
+    <div id="status" class="status">
+      <span id="statusText">Venter på opdatering…</span>
+      <span class="statusSep">•</span>
+      <span id="lastUpdated">Seneste handelsdag: —</span>
+    </div>
+
+    <!-- =========================================================
+         AFSNIT 09 – GRAF PANEL (FAST UI)
+         VIGTIGT: Må IKKE ligge inde i #table
+         ========================================================= -->
+    <section id="graphPanel" class="graphPanel" hidden>
+      <div class="graphHead">
+        <strong>Graf</strong>
+        <button id="graphClose" type="button" class="ghost">Luk</button>
+      </div>
+
+      <div class="graphControls">
+        <label for="graphMode">Vælg graf:</label>
+        <select id="graphMode">
+          <option value="" selected disabled>Vælg…</option>
+          <option value="profit">Gevinst-udvikling</option>
+          <option value="price_all">Kurs-udvikling (alle 3 fonde)</option>
+        </select>
+      </div>
+
+      <canvas id="graphCanvas" width="900" height="300"></canvas>
+    </section>
+
+    <!-- =========================================================
+         AFSNIT 10 – DATA-OMRÅDE (MÅ RE-RENDERES)
+         Her må ui.js gerne bygge totals/overblik/tabel igen og igen.
+         ========================================================= -->
+    <div id="table"></div>
+
+  </div>
 
   <!-- =========================================================
-       AFSNIT 06 – CSV parser (PapaParse)
+       AFSNIT 11 – Eksternt lib (valgfrit)
+       Ingen integrity-attribut → undgår SRI mismatch problemer.
        ========================================================= -->
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
   ></script>
-</head>
-
-<body>
-  <main>
-    <!-- =========================================================
-         AFSNIT 07 – HEADER / TITLE + THEME TOGGLE
-         ========================================================= -->
-    <header class="topbar">
-      <div class="title">
-        <h1>📈 Udvikling siden 10/09/2025 (DKK &amp; %)</h1>
-        <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
-      </div>
-
-      <button id="themeToggle" class="ghost" title="Skift mellem dark/light">🌙</button>
-    </header>
-
-    <!-- =========================================================
-         AFSNIT 08 – ACTIONS
-         NYT: Graf-knap (kun UI – logik kommer senere)
-         ========================================================= -->
-    <div class="actions">
-      <button id="refresh">🔄 Opdater</button>
-      <button id="pdf" class="ghost">📄 PDF</button>
-      <button id="graph" class="ghost" title="Vis graf">📈 Graf</button>
-    </div>
-
-    <!-- =========================================================
-         AFSNIT 09 – STATUS
-         ========================================================= -->
-    <div id="status" class="status">
-      <span id="statusText">Venter på opdatering…</span>
-      <span class="statusSep">•</span>
-      <span id="lastUpdated">Seneste handelsdag: —</span>
-      <!-- NB: “Senest tjekket” (din klik-tid) tilføjer vi i næste trin via JS -->
-    </div>
-
-    <!-- =========================================================
-         AFSNIT 10 – GRAF PANEL (skjult indtil vi aktiverer det)
-         Dropdown styrer om vi viser:
-         - Gevinst-udvikling (DKK)
-         - Kurs-udvikling for alle 3 fonde samlet
-         ========================================================= -->
-    <section id="graphPanel" hidden>
-      <div class="actions" style="justify-content:center; gap:10px; margin-top:10px;">
-        <label for="graphMode" style="opacity:.9;">
-          Vælg graf:
-        </label>
-        <select id="graphMode">
-          <option value="" selected disabled>Vælg…</option>
-          <option value="profit">Gevinst-udvikling (DKK)</option>
-          <option value="price_all">Kurs-udvikling (alle 3 fonde sammen)</option>
-        </select>
-        <button id="graphClose" class="ghost" type="button">Luk</button>
-      </div>
-
-      <div style="max-width:1100px; margin:10px auto 0; padding:0 14px;">
-        <canvas id="graphCanvas" width="1100" height="360"></canvas>
-      </div>
-    </section>
-
-    <!-- =========================================================
-         AFSNIT 11 – TABLE CONTAINER (UI renderer indhold her)
-         ========================================================= -->
-    <div id="table"></div>
-  </main>
 
   <!-- =========================================================
-       AFSNIT 12 – APP (ESM)
+       AFSNIT 12 – Main module
        ========================================================= -->
   <script type="module" src="js/main.js"></script>
 
   <!-- =========================================================
-       AFSNIT 13 – PDF
+       AFSNIT 13 – PDF (print)
        ========================================================= -->
   <script>
-    document.getElementById("pdf").addEventListener("click", () => window.print());
+    const pdfBtn = document.getElementById("pdf");
+    if (pdfBtn) pdfBtn.addEventListener("click", () => window.print());
   </script>
 
   <!-- =========================================================
-       AFSNIT 14 – SERVICE WORKER (ændres IKKE)
+       AFSNIT 14 – Service Worker (UÆNDRET LOGIK)
        ========================================================= -->
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/aktie-app/service-worker.js")
         .then(() => console.log("✅ Service Worker registreret"))
-        .catch((err) => console.warn("SW fejl:", err));
+        .catch((err) => console.warn("⚠️ Service Worker fejl:", err));
     }
   </script>
 </body>
