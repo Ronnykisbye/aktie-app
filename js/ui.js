@@ -81,9 +81,8 @@ function diffDaysLocal(older, newer) {
 
 /* =========================================================
    AFSNIT 03 – UI helpers (skeleton/boxes)
-   VIGTIGT:
-   - Totals markup matcher CSS i components.css
-   - Overblik-tabellen er fjernet (kun den store tabel tilbage)
+   VIGTIGT: Totals markup matcher CSS i components.css:
+   .totals + 2 x h3 + span.value
    ========================================================= */
 
 function escapeHtml(s) {
@@ -97,9 +96,7 @@ function escapeHtml(s) {
 
 function buildSkeleton(container) {
   container.innerHTML = `
-    <!-- =====================================================
-         AFSNIT 03A – TOTALS (3D bokse)
-         ===================================================== -->
+    <!-- Totals (3D bokse) -->
     <div class="totals" id="totals">
       <h3 id="totalValueBox">
         Samlet porteføljeværdi:<br>
@@ -113,8 +110,11 @@ function buildSkeleton(container) {
     </div>
 
     <!-- =====================================================
-         AFSNIT 03B – KUN DEN STORE TABEL (mest info)
+         AFSNIT 03B – OVERBLIK (3 fonde) – FJERNET
+         (Vi beholder kun den store tabel)
          ===================================================== -->
+
+    <!-- Tabel (fuld detaljer) -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -167,7 +167,11 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
 }
 
 /* =========================================================
-   AFSNIT 05 – Tabelrækker (stor tabel)
+   AFSNIT 05 – Mini-overblik (3 fonde) – FJERNET
+   ========================================================= */
+
+/* =========================================================
+   AFSNIT 06 – Tabelrækker (fuld)
    ========================================================= */
 
 function renderRows(rows) {
@@ -206,7 +210,7 @@ function renderRows(rows) {
 }
 
 /* =========================================================
-   AFSNIT 06 – Konvertering / beregning
+   AFSNIT 07 – Konvertering / beregning
    ========================================================= */
 
 function toDKK(price, currency, eurDkk) {
@@ -222,7 +226,7 @@ function toDKK(price, currency, eurDkk) {
 }
 
 /* =========================================================
-   AFSNIT 07 – Hovedrender: portfolio
+   AFSNIT 08 – Hovedrender: portfolio
    - lastUpdatedEl: “Seneste handelsdag: …”
    - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
