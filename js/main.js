@@ -105,13 +105,14 @@ async function mergeFromFondeCsv(holdings) {
 }
 
 /* =========================================================
-   AFSNIT 06 – Graf: beregning + tegning (canvas)
+   AFSNIT 06 – Graf: data + tegning (canvas)
    ========================================================= */
 
 // Vi gemmer seneste data, så grafen kan tegnes uden ekstra fetch
 let latest = {
   holdings: null,
-  eurDkk: 0
+  eurDkk: 0,
+  updatedAtISO: null
 };
 
 function toDKK(price, currency, eurDkk) {
@@ -123,42 +124,30 @@ function toDKK(price, currency, eurDkk) {
   return p;
 }
 
-function buildGraphSeries(mode, holdings, eurDkk) {
-  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+function shortName(name) {
+  return String(name || "Ukendt")
+    .replace(/^Nordea\s+/i, "")
+    .replace(/\s+KL\s*\d+$/i, "")
+    .trim();
+}
 
-  const series = list.map(it => {
-    const name = it.name || "Ukendt";
+function fmtDKKValue(v) {
+  const x = Number(v);
+  if (!Number.isFinite(x)) return "—";
+  return x.toLocaleString("da-DK", { maximumFractionDigits: 2 }) + " DKK";
+}
 
-    const units = Number(it.quantity ?? it.Antal ?? 0);
-    const currency = (it.currency || "DKK").toUpperCase();
-
-    const current = Number(it.price ?? it.Kurs ?? 0);
-    const buy = Number(it.buyPrice ?? it.KøbsKurs ?? 0);
-
-    const currentDKK = toDKK(current, currency, eurDkk);
-    const buyDKK = toDKK(buy, currency, eurDkk);
-
-    const profitDKK = units * (currentDKK - buyDKK);
-
-    if (mode === "profit") {
-      return { label: name, value: profitDKK, unit: "DKK" };
-    }
-
-    if (mode === "price_all") {
-      return { label: name, value: currentDKK, unit: "DKK" };
-    }
-
-    return { label: name, value: 0, unit: "" };
-  });
-
-  return series;
+function formatDateShort(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("da-DK", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(d);
 }
 
 function clearCanvas(ctx, w, h) {
   ctx.clearRect(0, 0, w, h);
 }
 
-function drawBarChart(canvas, title, series) {
+function drawBarChartValuesInside(canvas, title, series) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -168,13 +157,11 @@ function drawBarChart(canvas, title, series) {
 
   clearCanvas(ctx, w, h);
 
-  // Layout
   const padL = 40;
   const padR = 16;
   const padT = 28;
   const padB = 42;
 
-  // Titel
   ctx.font = "bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillStyle = "#cfe8ff";
   ctx.fillText(title, padL, 18);
@@ -189,50 +176,36 @@ function drawBarChart(canvas, title, series) {
   const values = series.map(s => Number(s.value) || 0);
   const maxAbs = Math.max(1, ...values.map(v => Math.abs(v)));
 
-  // Akse-område
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
-  const baseY = padT + chartH; // bundlinje
+  const baseY = padT + chartH;
 
-  // 0-linje hvis der er både +/-
   const hasNeg = values.some(v => v < 0);
   const hasPos = values.some(v => v > 0);
 
   let zeroY = baseY;
-  if (hasNeg && hasPos) {
-    // midtlinje
-    zeroY = padT + chartH / 2;
-  } else if (hasNeg && !hasPos) {
-    // 0-linje i top
-    zeroY = padT;
-  } else {
-    // 0-linje i bund
-    zeroY = baseY;
-  }
+  if (hasNeg && hasPos) zeroY = padT + chartH / 2;
+  else if (hasNeg && !hasPos) zeroY = padT;
 
-  // Tegn akser
   ctx.strokeStyle = "rgba(207,232,255,0.35)";
   ctx.lineWidth = 1;
 
-  // Y-akse
   ctx.beginPath();
   ctx.moveTo(padL, padT);
   ctx.lineTo(padL, baseY);
   ctx.stroke();
 
-  // 0-linje
   ctx.beginPath();
   ctx.moveTo(padL, zeroY);
   ctx.lineTo(padL + chartW, zeroY);
   ctx.stroke();
 
-  // Bars
   const barGap = 14;
   const barW = Math.max(24, Math.floor((chartW - barGap * (series.length - 1)) / series.length));
   const totalBarsW = barW * series.length + barGap * (series.length - 1);
   const startX = padL + Math.max(0, Math.floor((chartW - totalBarsW) / 2));
 
-  ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textAlign = "center";
 
   series.forEach((s, i) => {
@@ -244,26 +217,202 @@ function drawBarChart(canvas, title, series) {
     const yTop = v >= 0 ? (zeroY - scaled) : zeroY;
     const barH = scaled;
 
-    // Farve: grøn for +, rød for -, blå for 0
     ctx.fillStyle = v > 0 ? "rgba(0,200,140,0.85)" : v < 0 ? "rgba(230,80,80,0.85)" : "rgba(50,150,255,0.75)";
     ctx.fillRect(x, yTop, barW, barH);
 
-    // Værdi-tekst
-    ctx.fillStyle = "#eaf6ff";
-    const valueText = (Math.round(v * 100) / 100).toLocaleString("da-DK", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " " + (s.unit || "");
-    const vtY = v >= 0 ? (yTop - 6) : (yTop + barH + 14);
-    ctx.fillText(valueText, x + barW / 2, vtY);
+    // Værdi-tekst INDE i baren (hvis der er plads)
+    const txt = fmtDKKValue(v);
+    ctx.fillStyle = "#0b1016";
+    const insideY = v >= 0 ? (yTop + 18) : (yTop + barH - 10);
+    ctx.fillText(txt, x + barW / 2, Math.max(padT + 18, Math.min(baseY - 6, insideY)));
 
-    // Label (kort)
-    const label = String(s.label || "").replace("Nordea ", "");
+    // Kort label under
     ctx.fillStyle = "rgba(207,232,255,0.85)";
-    ctx.fillText(label, x + barW / 2, baseY + 20);
+    ctx.fillText(shortName(s.label), x + barW / 2, baseY + 20);
   });
 
-  // footer note
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(207,232,255,0.6)";
   ctx.fillText("Bemærk: Grafen viser nuværende data (ingen historik endnu).", padL, h - 12);
+}
+
+/**
+ * Linje-graf med 2 punkter pr. fond:
+ * - Punkt A: købskurs (PURCHASE_DATE_ISO)
+ * - Punkt B: nuværende kurs (holdings.updatedAt)
+ * Skriver beløbet ved slutpunktet (inde i grafområdet).
+ */
+function drawTwoPointLineChart(canvas, title, seriesByFund, startISO, endISO) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  clearCanvas(ctx, w, h);
+
+  const padL = 54;
+  const padR = 24;
+  const padT = 30;
+  const padB = 44;
+
+  ctx.font = "bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "#cfe8ff";
+  ctx.fillText(title, padL, 18);
+
+  const allPoints = [];
+  seriesByFund.forEach(f => f.points.forEach(p => allPoints.push(p.value)));
+
+  if (!allPoints.length) {
+    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.fillStyle = "#cfe8ff";
+    ctx.fillText("Ingen data til graf.", padL, 50);
+    return;
+  }
+
+  // Skala
+  const minV = Math.min(...allPoints);
+  const maxV = Math.max(...allPoints);
+  const range = Math.max(1e-6, maxV - minV);
+
+  // Lidt “luft” så labels ikke rammer kanten
+  const topPad = range * 0.12;
+  const bottomPad = range * 0.10;
+
+  const minYVal = minV - bottomPad;
+  const maxYVal = maxV + topPad;
+
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+
+  const x0 = padL;
+  const x1 = padL + chartW;
+
+  function yOf(v) {
+    const t = (v - minYVal) / (maxYVal - minYVal);
+    return padT + (1 - t) * chartH;
+  }
+
+  // Grid + akser
+  ctx.strokeStyle = "rgba(207,232,255,0.22)";
+  ctx.lineWidth = 1;
+
+  // Y-grid (3 linjer)
+  for (let i = 0; i <= 3; i++) {
+    const yy = padT + (chartH * i) / 3;
+    ctx.beginPath();
+    ctx.moveTo(padL, yy);
+    ctx.lineTo(padL + chartW, yy);
+    ctx.stroke();
+  }
+
+  // Akse venstre
+  ctx.strokeStyle = "rgba(207,232,255,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + chartH);
+  ctx.stroke();
+
+  // X labels (datoer)
+  ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "rgba(207,232,255,0.85)";
+  ctx.textAlign = "left";
+  ctx.fillText(formatDateShort(startISO), x0, padT + chartH + 28);
+  ctx.textAlign = "right";
+  ctx.fillText(formatDateShort(endISO), x1, padT + chartH + 28);
+
+  // Y labels (min/max)
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(207,232,255,0.7)";
+  ctx.fillText(fmtDKKValue(maxV), padL - 8, yOf(maxV) + 4);
+  ctx.fillText(fmtDKKValue(minV), padL - 8, yOf(minV) + 4);
+
+  // Farver pr. fond (3 stk)
+  const colors = ["#4ec7ff", "#00c88c", "#f7b84b"];
+
+  // Tegn hver fond
+  ctx.textAlign = "left";
+  seriesByFund.forEach((fund, idx) => {
+    const c = colors[idx % colors.length];
+    const pA = fund.points[0];
+    const pB = fund.points[1];
+
+    const yA = yOf(pA.value);
+    const yB = yOf(pB.value);
+
+    // linje
+    ctx.strokeStyle = c;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x0, yA);
+    ctx.lineTo(x1, yB);
+    ctx.stroke();
+
+    // punkter
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(x0, yA, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x1, yB, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // beløb ved slutpunkt (inde i grafen)
+    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.fillStyle = "#eaf6ff";
+    const label = `${shortName(fund.label)}: ${fmtDKKValue(pB.value)}`;
+    const labelY = Math.max(padT + 14, Math.min(padT + chartH - 6, yB - 8));
+    ctx.fillText(label, x1 - 190, labelY);
+  });
+
+  // Note
+  ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "rgba(207,232,255,0.6)";
+  ctx.textAlign = "left";
+  ctx.fillText("Bemærk: 2 punkter pr. fond (køb → nu). Historik kan tilføjes senere.", padL, h - 12);
+}
+
+function buildProfitSeries(holdings, eurDkk) {
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+  return list.map(it => {
+    const name = it.name || "Ukendt";
+    const units = Number(it.quantity ?? it.Antal ?? 0);
+    const currency = (it.currency || "DKK").toUpperCase();
+
+    const current = Number(it.price ?? it.Kurs ?? 0);
+    const buy = Number(it.buyPrice ?? it.KøbsKurs ?? 0);
+
+    const currentDKK = toDKK(current, currency, eurDkk);
+    const buyDKK = toDKK(buy, currency, eurDkk);
+
+    const profitDKK = units * (currentDKK - buyDKK);
+
+    return { label: name, value: profitDKK, unit: "DKK" };
+  });
+}
+
+function buildTwoPointPriceSeries(holdings, eurDkk, startISO, endISO) {
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+  return list.map(it => {
+    const name = it.name || "Ukendt";
+    const currency = (it.currency || "DKK").toUpperCase();
+
+    const current = Number(it.price ?? it.Kurs ?? 0);
+    const buy = Number(it.buyPrice ?? it.KøbsKurs ?? 0);
+
+    const currentDKK = toDKK(current, currency, eurDkk);
+    const buyDKK = toDKK(buy, currency, eurDkk);
+
+    return {
+      label: name,
+      points: [
+        { x: startISO, value: buyDKK },
+        { x: endISO, value: currentDKK }
+      ]
+    };
+  });
 }
 
 function renderGraphIfPossible() {
@@ -278,12 +427,21 @@ function renderGraphIfPossible() {
 
   if (!holdings) return;
 
+  const endISO = latest.updatedAtISO || new Date().toISOString();
+  const startISO = PURCHASE_DATE_ISO || "2025-09-10";
+
   if (mode === "profit") {
-    const series = buildGraphSeries("profit", holdings, eurDkk);
-    drawBarChart(el.graphCanvas, "Gevinst/tab (DKK) pr. fond", series);
+    const series = buildProfitSeries(holdings, eurDkk);
+    drawBarChartValuesInside(el.graphCanvas, "Gevinst/tab (DKK) pr. fond", series);
   } else if (mode === "price_all") {
-    const series = buildGraphSeries("price_all", holdings, eurDkk);
-    drawBarChart(el.graphCanvas, "Nuværende kurs (DKK) pr. fond", series);
+    const byFund = buildTwoPointPriceSeries(holdings, eurDkk, startISO, endISO);
+    drawTwoPointLineChart(
+      el.graphCanvas,
+      "Kurs-udvikling (DKK) pr. fond – køb → nu",
+      byFund,
+      startISO,
+      endISO
+    );
   }
 }
 
@@ -309,6 +467,7 @@ async function loadAndRender() {
     // Gem seneste data til graf
     latest.holdings = holdings;
     latest.eurDkk = eurDkk;
+    latest.updatedAtISO = holdings?.updatedAt || null;
 
     renderPortfolio({
       container: el.table,
@@ -339,7 +498,6 @@ function initEvents() {
   if (el.graphBtn && el.graphPanel) {
     el.graphBtn.addEventListener("click", () => {
       el.graphPanel.hidden = !el.graphPanel.hidden;
-      // Tegn hvis åbent og mode allerede valgt
       renderGraphIfPossible();
     });
   }
