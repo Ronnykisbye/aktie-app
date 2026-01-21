@@ -1,88 +1,143 @@
-/* =========================================================
-   AFSNIT 01 – Imports
-   ========================================================= */
-import { getLatestHoldingsPrices, getEURDKK } from "./api.js";
 import { renderPortfolio } from "./ui.js";
-import { PURCHASE_DATE_ISO } from "./config.js";
 
 /* =========================================================
-   AFSNIT 02 – DOM refs
+   AFSNIT 01 – DOM
    ========================================================= */
-const el = {
-  refresh: document.getElementById("refresh"),
-  // force er fjernet (UI har ikke knappen længere)
-  table: document.getElementById("table"),
-  statusText: document.getElementById("statusText"),
-  lastUpdated: document.getElementById("lastUpdated"),
-  themeToggle: document.getElementById("themeToggle")
-};
+
+const tableContainer = document.getElementById("table");
+const statusText = document.getElementById("statusText");
+const lastUpdated = document.getElementById("lastUpdated");
+
+const btnRefresh = document.getElementById("refresh");
+const btnGraph = document.getElementById("graph");
+
+const graphPanel = document.getElementById("graphPanel");
+const graphMode = document.getElementById("graphMode");
+const graphClose = document.getElementById("graphClose");
+const canvas = document.getElementById("graphCanvas");
+const ctx = canvas.getContext("2d");
 
 /* =========================================================
-   AFSNIT 03 – Theme (dark/light)
+   AFSNIT 02 – DATA
    ========================================================= */
-function applyTheme(theme) {
-  const t = theme === "dark" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", t);
-  if (el.themeToggle) el.themeToggle.textContent = t === "dark" ? "☀️" : "🌙";
-  localStorage.setItem("aktie_theme", t);
+
+let latestData = null;
+
+/* =========================================================
+   AFSNIT 03 – FETCH
+   ========================================================= */
+
+async function loadData() {
+  const res = await fetch("data/prices.json?t=" + Date.now());
+  const json = await res.json();
+
+  latestData = json;
+
+  renderPortfolio({
+    container: tableContainer,
+    statusTextEl: statusText,
+    lastUpdatedEl: lastUpdated,
+    holdings: json,
+    eurDkk: json.eurDkk || 7.45
+  });
 }
 
-function initTheme() {
-  const saved = localStorage.getItem("aktie_theme");
-  applyTheme(saved || "light");
-  if (el.themeToggle) {
-    el.themeToggle.addEventListener("click", () => {
-      const current = document.documentElement.getAttribute("data-theme") || "light";
-      applyTheme(current === "dark" ? "light" : "dark");
-    });
+btnRefresh.addEventListener("click", loadData);
+
+/* =========================================================
+   AFSNIT 04 – GRAF UI
+   ========================================================= */
+
+btnGraph.addEventListener("click", () => {
+  graphPanel.hidden = !graphPanel.hidden;
+});
+
+graphClose.addEventListener("click", () => {
+  graphPanel.hidden = true;
+});
+
+graphMode.addEventListener("change", () => {
+  if (!latestData) return;
+
+  if (graphMode.value === "profit") {
+    drawProfitGraph();
   }
-}
 
-/* =========================================================
-   AFSNIT 04 – Status helper
-   ========================================================= */
-function setStatus(text) {
-  if (el.statusText) el.statusText.textContent = text;
-}
-
-/* =========================================================
-   AFSNIT 05 – Core: Load + render
-   ========================================================= */
-async function loadAndRender() {
-  try {
-    setStatus("Henter data…");
-    const [eurDkk, holdings] = await Promise.all([
-      getEURDKK(),
-      getLatestHoldingsPrices()
-    ]);
-
-    renderPortfolio({
-      container: el.table,
-      statusTextEl: el.statusText,
-      lastUpdatedEl: el.lastUpdated,
-      holdings,
-      eurDkk,
-      purchaseDateISO: PURCHASE_DATE_ISO
-    });
-
-    // ui.js sætter selv “OK – data vist.” efter render
-  } catch (err) {
-    console.error(err);
-    setStatus("Fejl – kunne ikke hente data.");
-    if (el.lastUpdated) el.lastUpdated.textContent = "Data opdateret: — • Nu: —";
+  if (graphMode.value === "price_all") {
+    drawPriceGraph();
   }
+});
+
+/* =========================================================
+   AFSNIT 05 – GRAF: GEVINST
+   ========================================================= */
+
+function drawProfitGraph() {
+  clearCanvas();
+
+  const rows = latestData.items;
+
+  const labels = rows.map(r => r.name);
+  const values = rows.map(r =>
+    (r.price - r.buyPrice) * r.quantity
+  );
+
+  drawBarChart(labels, values, "Gevinst (DKK)");
 }
 
 /* =========================================================
-   AFSNIT 06 – Events
+   AFSNIT 06 – GRAF: KURSER
    ========================================================= */
-function initEvents() {
-  if (el.refresh) el.refresh.addEventListener("click", loadAndRender);
+
+function drawPriceGraph() {
+  clearCanvas();
+
+  const rows = latestData.items;
+
+  const labels = rows.map(r => r.name);
+  const values = rows.map(r => r.price);
+
+  drawBarChart(labels, values, "Kurs");
 }
 
 /* =========================================================
-   AFSNIT 07 – Boot
+   AFSNIT 07 – GENERISK BAR-GRAF
    ========================================================= */
-initTheme();
-initEvents();
-loadAndRender();
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawBarChart(labels, values, title) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const max = Math.max(...values) * 1.1;
+  const barWidth = w / values.length - 40;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Titel
+  ctx.fillStyle = "#fff";
+  ctx.font = "16px sans-serif";
+  ctx.fillText(title, 20, 30);
+
+  values.forEach((v, i) => {
+    const x = 60 + i * (barWidth + 40);
+    const y = h - (v / max) * (h - 80);
+    const height = (v / max) * (h - 80);
+
+    ctx.fillStyle = "#2fd1ff";
+    ctx.fillRect(x, y, barWidth, height);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(labels[i], x, h - 20);
+  });
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+
+loadData();
