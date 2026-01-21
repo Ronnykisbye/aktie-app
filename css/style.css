@@ -1,0 +1,8 @@
+/* =========================================================
+   AFSNIT 01 – Kompatibilitet (legacy)
+   ---------------------------------------------------------
+   Nogle caches/ældre HTML kan stadig forsøge at hente
+   css/style.css. For at undgå 404 loader vi app.css herfra.
+   ========================================================= */
+
+@import url("./app.css");
