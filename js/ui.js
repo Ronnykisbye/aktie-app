@@ -22,23 +22,15 @@ export function fmtNum(n, digits = 2) {
   }).format(x);
 }
 
-export function fmtPct(n) {
+export function fmtPct(n, digits = 2) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
   const sign = x > 0 ? "+" : "";
-  return sign + fmtNum(x, 2) + " %";
-}
-
-export function clsByNumber(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "";
-  if (x > 0) return "pos";
-  if (x < 0) return "neg";
-  return "";
+  return `${sign}${fmtNum(x, digits)} %`;
 }
 
 /* =========================================================
-   AFSNIT 02 – Dato/tid (lokal) + “dage gammel”
+   AFSNIT 02 – Dato/tid (UTC ISO -> lokal DK)
    ========================================================= */
 
 function parseISO(iso) {
@@ -47,8 +39,8 @@ function parseISO(iso) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function formatDateTimeLocal(input) {
-  const d = input instanceof Date ? input : parseISO(input);
+export function formatDateTimeLocal(iso) {
+  const d = parseISO(iso);
   if (!d) return "—";
   return new Intl.DateTimeFormat("da-DK", {
     year: "numeric",
@@ -60,7 +52,6 @@ function formatDateTimeLocal(input) {
 }
 
 function isSameLocalDate(a, b) {
-  if (!a || !b) return false;
   return (
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
@@ -68,21 +59,62 @@ function isSameLocalDate(a, b) {
   );
 }
 
-function diffDaysLocal(older, newer) {
-  if (!older || !newer) return 0;
-
-  const o = new Date(older.getFullYear(), older.getMonth(), older.getDate());
-  const n = new Date(newer.getFullYear(), newer.getMonth(), newer.getDate());
-
-  const ms = n.getTime() - o.getTime();
-  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  return Math.max(0, days);
+function diffDaysLocal(a, b) {
+  // Sammenlign lokale datoer (midnat->midnat)
+  const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  const ms = bb - aa;
+  return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
 /* =========================================================
-   AFSNIT 03 – UI helpers (skeleton/boxes)
-   VIGTIGT: Totals markup matcher CSS i components.css:
-   .totals + 2 x h3 + span.value
+   AFSNIT 03 – Beregninger
+   ========================================================= */
+
+function toNumber(v) {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+
+function toDKK(price, currency, eurDkk) {
+  const p = toNumber(price);
+  const c = String(currency || "DKK").toUpperCase();
+  if (c === "DKK") return p;
+  if (c === "EUR") return p * toNumber(eurDkk);
+  return p;
+}
+
+function computeRow(h, eurDkk) {
+  const qty = toNumber(h.quantity ?? h.Antal);
+  const price = toNumber(h.price ?? h.Kurs);
+  const buyPrice = toNumber(h.buyPrice ?? h.KøbsKurs);
+  const currency = String(h.currency || "DKK").toUpperCase();
+
+  const priceDKK = toDKK(price, currency, eurDkk);
+  const buyDKK = toDKK(buyPrice, currency, eurDkk);
+
+  const valueDKK = qty * priceDKK;
+  const costDKK = qty * buyDKK;
+  const profitDKK = valueDKK - costDKK;
+  const profitPct = costDKK > 0 ? (profitDKK / costDKK) * 100 : 0;
+
+  return {
+    name: h.name || "Ukendt",
+    currency,
+    qty,
+    price,
+    buyPrice,
+    priceDKK,
+    buyDKK,
+    valueDKK,
+    costDKK,
+    profitDKK,
+    profitPct
+  };
+}
+
+/* =========================================================
+   AFSNIT 04 – DOM helpers
    ========================================================= */
 
 function escapeHtml(s) {
@@ -94,141 +126,52 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function buildSkeleton(container) {
-  container.innerHTML = `
-    <!-- Totals (3D bokse) -->
-    <div class="totals" id="totals">
-      <h3 id="totalValueBox">
-        Samlet porteføljeværdi:<br>
-        <span class="value" id="totalValue">—</span>
-      </h3>
+function clearEl(el) {
+  if (!el) return;
+  el.innerHTML = "";
+}
 
-      <h3 id="totalProfitBox">
-        Samlet gevinst/tab siden 10.09.2025:<br>
-        <span class="value" id="totalProfit">—</span>
-      </h3>
+function renderInfoBox(container, text) {
+  const div = document.createElement("div");
+  div.className = "info";
+  div.textContent = text;
+  container.appendChild(div);
+}
+
+function buildSkeleton(container) {
+  // Her bygger vi kun den store tabel + totals (ingen “Overblik” tabel)
+  container.innerHTML = `
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">Samlet porteføljeværdi:</div>
+        <div class="card-value" id="totalValue">—</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Samlet gevinst/tab siden 10.09.2025:</div>
+        <div class="card-value accent" id="totalProfit">—</div>
+      </div>
     </div>
 
-    <!-- =====================================================
-         AFSNIT 03B – OVERBLIK (3 fonde) – FJERNET
-         (Vi beholder kun den store tabel)
-         ===================================================== -->
-
-    <!-- Tabel (fuld detaljer) -->
     <div class="table-wrap">
-      <table class="data-table">
+      <table class="table">
         <thead>
           <tr>
             <th>Navn</th>
-            <th>%</th>
-            <th>DKK</th>
+            <th>Udvikling (%)</th>
+            <th>Udvikling (DKK)</th>
             <th>Kurs</th>
             <th>Antal</th>
-            <th>Kurs DKK</th>
+            <th>Kurs (DKK)</th>
           </tr>
         </thead>
-        <tbody id="rowsBody"></tbody>
+        <tbody id="rows"></tbody>
       </table>
     </div>
   `;
 }
 
-function renderInfoBox(container, text) {
-  container.innerHTML = `
-    <div class="info-box">
-      ${text}
-    </div>
-  `;
-}
-
 /* =========================================================
-   AFSNIT 04 – Totals (3D bokse) – Udfyld værdier
-   ========================================================= */
-
-function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
-  const totalValueEl = document.getElementById("totalValue");
-  const totalProfitEl = document.getElementById("totalProfit");
-  const totalProfitBox = document.getElementById("totalProfitBox");
-
-  if (totalValueEl) totalValueEl.textContent = fmtDKK(totalValue);
-
-  if (totalProfitEl) {
-    totalProfitEl.textContent = fmtDKK(totalProfit);
-
-    totalProfitEl.classList.remove("pos", "neg");
-    const cls = clsByNumber(totalProfit);
-    if (cls) totalProfitEl.classList.add(cls);
-  }
-
-  if (totalProfitBox && purchaseDateISO) {
-    const pretty = String(purchaseDateISO).split("-").reverse().join(".");
-    totalProfitBox.childNodes[0].textContent = `Samlet gevinst/tab siden ${pretty}:`;
-  }
-}
-
-/* =========================================================
-   AFSNIT 05 – Mini-overblik (3 fonde) – FJERNET
-   ========================================================= */
-
-/* =========================================================
-   AFSNIT 06 – Tabelrækker (fuld)
-   ========================================================= */
-
-function renderRows(rows) {
-  const tbody = document.getElementById("rowsBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = rows
-    .map(r => {
-      return `
-        <tr>
-          <td>${escapeHtml(r.name)}</td>
-
-          <td class="${clsByNumber(r.profitPct)}">
-            ${fmtPct(r.profitPct)}
-          </td>
-
-          <td class="${clsByNumber(r.profitDKK)}">
-            ${fmtDKK(r.profitDKK)}
-          </td>
-
-          <td>
-            ${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}
-          </td>
-
-          <td>
-            ${fmtNum(r.units, 0)}
-          </td>
-
-          <td>
-            ${fmtDKK(r.currentPriceDKK)}
-          </td>
-        </tr>
-      `;
-    })
-    .join("");
-}
-
-/* =========================================================
-   AFSNIT 07 – Konvertering / beregning
-   ========================================================= */
-
-function toDKK(price, currency, eurDkk) {
-  const p = Number(price);
-  if (!Number.isFinite(p)) return 0;
-
-  const c = (currency || "DKK").toUpperCase();
-
-  if (c === "DKK") return p;
-  if (c === "EUR") return p * Number(eurDkk || 0);
-
-  return p;
-}
-
-/* =========================================================
-   AFSNIT 08 – Hovedrender: portfolio
-   - lastUpdatedEl: “Seneste handelsdag: …”
-   - statusTextEl: OK + evt. “X dage gammel”
+   AFSNIT 05 – Render
    ========================================================= */
 
 export function renderPortfolio({
@@ -239,13 +182,10 @@ export function renderPortfolio({
   eurDkk,
   purchaseDateISO
 }) {
-  if (!container) return;
+  clearEl(container);
 
-  const list = Array.isArray(holdings)
-    ? holdings
-    : holdings?.items || [];
-
-  const updatedAt = holdings?.updatedAt || list[0]?.updatedAt || null;
+  const updatedAt = holdings?.updatedAt || holdings?.updatedAtISO || null;
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
 
   buildSkeleton(container);
 
@@ -253,7 +193,10 @@ export function renderPortfolio({
   const now = new Date();
 
   if (lastUpdatedEl) {
-    lastUpdatedEl.textContent = "Seneste handelsdag: " + formatDateTimeLocal(updatedAt);
+    lastUpdatedEl.textContent =
+      "Seneste handelsdag: " +
+      formatDateTimeLocal(updatedAt) +
+      (holdings?.source ? " • Opdateret af: " + holdings.source : "");
   }
 
   if (statusTextEl) {
@@ -271,35 +214,6 @@ export function renderPortfolio({
     return;
   }
 
-  const rows = list.map(h => {
-    const units = Number(h.quantity ?? h.Antal ?? 0);
-    const price = Number(h.price ?? h.Kurs ?? 0);
-    const buy = Number(h.buyPrice ?? h.KøbsKurs ?? 0);
-    const currency = (h.currency || "DKK").toUpperCase();
+  const rows = list.map(h => computeRow(h, eurDkk));
 
-    const currentDKK = toDKK(price, currency, eurDkk);
-    const buyDKK = toDKK(buy, currency, eurDkk);
-
-    const value = units * currentDKK;
-    const profit = units * (currentDKK - buyDKK);
-
-    return {
-      name: h.name || "Ukendt",
-      units,
-      currency,
-      currentPrice: price,
-      currentPriceDKK: currentDKK,
-      profitDKK: profit,
-      profitPct: buyDKK && units ? (profit / (units * buyDKK)) * 100 : 0,
-      valueNow: value
-    };
-  });
-
-  renderTotals({
-    totalValue: rows.reduce((s, r) => s + r.valueNow, 0),
-    totalProfit: rows.reduce((s, r) => s + r.profitDKK, 0),
-    purchaseDateISO: purchaseDateISO || "2025-09-10"
-  });
-
-  renderRows(rows);
-}
+  const totalVa
