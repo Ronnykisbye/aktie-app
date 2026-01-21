@@ -216,4 +216,38 @@ export function renderPortfolio({
 
   const rows = list.map(h => computeRow(h, eurDkk));
 
-  const totalVa
+  const totalValue = rows.reduce((sum, r) => sum + r.valueDKK, 0);
+  const totalProfit = rows.reduce((sum, r) => sum + r.profitDKK, 0);
+
+  const totalValueEl = container.querySelector("#totalValue");
+  const totalProfitEl = container.querySelector("#totalProfit");
+  if (totalValueEl) totalValueEl.textContent = fmtDKK(totalValue);
+  if (totalProfitEl) totalProfitEl.textContent = fmtDKK(totalProfit);
+
+  const tbody = container.querySelector("#rows");
+  if (!tbody) return;
+
+  tbody.innerHTML = rows
+    .map(r => {
+      const kursText =
+        r.currency === "EUR"
+          ? `${fmtNum(r.price, 2)} EUR`
+          : `${fmtNum(r.price, 2)} DKK`;
+
+      const kursDKKText = fmtDKK(r.priceDKK).replace(" DKK", "");
+
+      const profitClass = r.profitDKK >= 0 ? "pos" : "neg";
+
+      return `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td class="${profitClass}">${fmtPct(r.profitPct, 2)}</td>
+          <td class="${profitClass}">${fmtDKK(r.profitDKK)}</td>
+          <td>${kursText}</td>
+          <td>${fmtNum(r.qty, 0)}</td>
+          <td>${kursDKKText} DKK</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
