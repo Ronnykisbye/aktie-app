@@ -34,7 +34,6 @@
 
   <!-- =========================================================
        AFSNIT 06 – CSV parser (PapaParse)
-       Fix: Fjern integrity (den var forkert og blokerede ressourcen)
        ========================================================= -->
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"
@@ -59,38 +58,68 @@
 
     <!-- =========================================================
          AFSNIT 08 – ACTIONS
+         NYT: Graf-knap (kun UI – logik kommer senere)
          ========================================================= -->
     <div class="actions">
       <button id="refresh">🔄 Opdater</button>
       <button id="pdf" class="ghost">📄 PDF</button>
+      <button id="graph" class="ghost" title="Vis graf">📈 Graf</button>
     </div>
 
     <!-- =========================================================
-         AFSNIT 09 – STATUS + TABLE CONTAINER
+         AFSNIT 09 – STATUS
          ========================================================= -->
     <div id="status" class="status">
       <span id="statusText">Venter på opdatering…</span>
       <span class="statusSep">•</span>
       <span id="lastUpdated">Seneste handelsdag: —</span>
+      <!-- NB: “Senest tjekket” (din klik-tid) tilføjer vi i næste trin via JS -->
     </div>
 
+    <!-- =========================================================
+         AFSNIT 10 – GRAF PANEL (skjult indtil vi aktiverer det)
+         Dropdown styrer om vi viser:
+         - Gevinst-udvikling (DKK)
+         - Kurs-udvikling for alle 3 fonde samlet
+         ========================================================= -->
+    <section id="graphPanel" hidden>
+      <div class="actions" style="justify-content:center; gap:10px; margin-top:10px;">
+        <label for="graphMode" style="opacity:.9;">
+          Vælg graf:
+        </label>
+        <select id="graphMode">
+          <option value="" selected disabled>Vælg…</option>
+          <option value="profit">Gevinst-udvikling (DKK)</option>
+          <option value="price_all">Kurs-udvikling (alle 3 fonde sammen)</option>
+        </select>
+        <button id="graphClose" class="ghost" type="button">Luk</button>
+      </div>
+
+      <div style="max-width:1100px; margin:10px auto 0; padding:0 14px;">
+        <canvas id="graphCanvas" width="1100" height="360"></canvas>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         AFSNIT 11 – TABLE CONTAINER (UI renderer indhold her)
+         ========================================================= -->
     <div id="table"></div>
   </main>
 
   <!-- =========================================================
-       AFSNIT 10 – APP (ESM)
+       AFSNIT 12 – APP (ESM)
        ========================================================= -->
   <script type="module" src="js/main.js"></script>
 
   <!-- =========================================================
-       AFSNIT 11 – PDF
+       AFSNIT 13 – PDF
        ========================================================= -->
   <script>
     document.getElementById("pdf").addEventListener("click", () => window.print());
   </script>
 
   <!-- =========================================================
-       AFSNIT 12 – SERVICE WORKER (ændres IKKE)
+       AFSNIT 14 – SERVICE WORKER (ændres IKKE)
        ========================================================= -->
   <script>
     if ("serviceWorker" in navigator) {
