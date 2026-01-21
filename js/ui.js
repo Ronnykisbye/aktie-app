@@ -109,7 +109,28 @@ function buildSkeleton(container) {
       </h3>
     </div>
 
-    <!-- Tabel -->
+    <!-- =====================================================
+         AFSNIT 03B – OVERBLIK (3 fonde) – synligt “andet design”
+         (Giver hurtigt overblik i skrift og tal)
+         ===================================================== -->
+    <div class="table-wrap" style="margin-top:14px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th colspan="4" style="text-align:center;">Overblik (3 fonde)</th>
+          </tr>
+          <tr>
+            <th>Fond</th>
+            <th>Udvikling (%)</th>
+            <th>Udvikling (DKK)</th>
+            <th>Kurs</th>
+          </tr>
+        </thead>
+        <tbody id="miniBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Tabel (fuld detaljer) -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -162,7 +183,29 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
 }
 
 /* =========================================================
-   AFSNIT 05 – Tabelrækker
+   AFSNIT 05 – Mini-overblik (3 fonde)
+   ========================================================= */
+
+function renderMini(rows) {
+  const tbody = document.getElementById("miniBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = rows
+    .map(r => {
+      return `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td class="${clsByNumber(r.profitPct)}">${fmtPct(r.profitPct)}</td>
+          <td class="${clsByNumber(r.profitDKK)}">${fmtDKK(r.profitDKK)}</td>
+          <td>${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+/* =========================================================
+   AFSNIT 06 – Tabelrækker (fuld)
    ========================================================= */
 
 function renderRows(rows) {
@@ -201,7 +244,7 @@ function renderRows(rows) {
 }
 
 /* =========================================================
-   AFSNIT 06 – Konvertering / beregning
+   AFSNIT 07 – Konvertering / beregning
    ========================================================= */
 
 function toDKK(price, currency, eurDkk) {
@@ -217,7 +260,7 @@ function toDKK(price, currency, eurDkk) {
 }
 
 /* =========================================================
-   AFSNIT 07 – Hovedrender: portfolio
+   AFSNIT 08 – Hovedrender: portfolio
    - lastUpdatedEl: “Seneste handelsdag: …”
    - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
@@ -285,5 +328,9 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
     purchaseDateISO: "2025-09-10"
   });
 
+  // NYT: overblik (3 fonde)
+  renderMini(rows);
+
+  // eksisterende fuld tabel
   renderRows(rows);
 }
