@@ -94,40 +94,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-/**
- * =========================================================
- * AFSNIT 03B – Charts skeleton (kun layout)
- * =========================================================
- * Vi tilføjer et chart-område uden at ændre beregninger/tabel.
- * Selve tegningen kommer i NÆSTE trin.
- */
-function buildChartsSkeleton(list) {
-  const safeList = Array.isArray(list) ? list : [];
-  const items = safeList.map((h, idx) => {
-    const name = escapeHtml(h?.name || `Fond ${idx + 1}`);
-    const canvasId = `chart_${idx}`;
-    return `
-      <div class="chart-card" data-chart-card>
-        <div class="chart-title">${name}</div>
-        <canvas id="${canvasId}" width="900" height="260" data-fund-index="${idx}"></canvas>
-        <div class="chart-note">3 måneder (kommer i næste trin)</div>
-      </div>
-    `;
-  });
-
-  return `
-    <section class="charts" id="charts">
-      <div class="charts-head">
-        <h2>Kurver (3 måneder)</h2>
-      </div>
-      <div class="charts-grid">
-        ${items.join("")}
-      </div>
-    </section>
-  `;
-}
-
-function buildSkeleton(container, listForCharts) {
+function buildSkeleton(container) {
   container.innerHTML = `
     <!-- Totals (3D bokse) -->
     <div class="totals" id="totals">
@@ -141,9 +108,6 @@ function buildSkeleton(container, listForCharts) {
         <span class="value" id="totalProfit">—</span>
       </h3>
     </div>
-
-    <!-- Charts (NYT – kun layout) -->
-    ${buildChartsSkeleton(listForCharts)}
 
     <!-- Tabel -->
     <div class="table-wrap">
@@ -193,7 +157,6 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
 
   if (totalProfitBox && purchaseDateISO) {
     const pretty = purchaseDateISO.split("-").reverse().join(".");
-    // childNodes[0] er teksten før <br>
     totalProfitBox.childNodes[0].textContent = `Samlet gevinst/tab siden ${pretty}:`;
   }
 }
@@ -255,8 +218,6 @@ function toDKK(price, currency, eurDkk) {
 
 /* =========================================================
    AFSNIT 07 – Hovedrender: portfolio
-   Fix:
-   - Ingen dobbelt “Seneste kurs”
    - lastUpdatedEl: “Seneste handelsdag: …”
    - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
@@ -270,8 +231,7 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
 
   const updatedAt = holdings?.updatedAt || list[0]?.updatedAt || null;
 
-  // NYT: buildSkeleton får listen, så vi kan lave 3 canvases (layout) pr. fond
-  buildSkeleton(container, list);
+  buildSkeleton(container);
 
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
