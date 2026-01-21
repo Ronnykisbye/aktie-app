@@ -71,7 +71,6 @@ function isSameLocalDate(a, b) {
 function diffDaysLocal(older, newer) {
   if (!older || !newer) return 0;
 
-  // Sammenlign på “dato-niveau” (lokal tid) for stabilt “X dage gammel”
   const o = new Date(older.getFullYear(), older.getMonth(), older.getDate());
   const n = new Date(newer.getFullYear(), newer.getMonth(), newer.getDate());
 
@@ -83,10 +82,52 @@ function diffDaysLocal(older, newer) {
 /* =========================================================
    AFSNIT 03 – UI helpers (skeleton/boxes)
    VIGTIGT: Totals markup matcher CSS i components.css:
-   .totals + 2 x h3 + span.value  (3D bokse)
+   .totals + 2 x h3 + span.value
    ========================================================= */
 
-function buildSkeleton(container) {
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+/**
+ * =========================================================
+ * AFSNIT 03B – Charts skeleton (kun layout)
+ * =========================================================
+ * Vi tilføjer et chart-område uden at ændre beregninger/tabel.
+ * Selve tegningen kommer i NÆSTE trin.
+ */
+function buildChartsSkeleton(list) {
+  const safeList = Array.isArray(list) ? list : [];
+  const items = safeList.map((h, idx) => {
+    const name = escapeHtml(h?.name || `Fond ${idx + 1}`);
+    const canvasId = `chart_${idx}`;
+    return `
+      <div class="chart-card" data-chart-card>
+        <div class="chart-title">${name}</div>
+        <canvas id="${canvasId}" width="900" height="260" data-fund-index="${idx}"></canvas>
+        <div class="chart-note">3 måneder (kommer i næste trin)</div>
+      </div>
+    `;
+  });
+
+  return `
+    <section class="charts" id="charts">
+      <div class="charts-head">
+        <h2>Kurver (3 måneder)</h2>
+      </div>
+      <div class="charts-grid">
+        ${items.join("")}
+      </div>
+    </section>
+  `;
+}
+
+function buildSkeleton(container, listForCharts) {
   container.innerHTML = `
     <!-- Totals (3D bokse) -->
     <div class="totals" id="totals">
@@ -100,6 +141,9 @@ function buildSkeleton(container) {
         <span class="value" id="totalProfit">—</span>
       </h3>
     </div>
+
+    <!-- Charts (NYT – kun layout) -->
+    ${buildChartsSkeleton(listForCharts)}
 
     <!-- Tabel -->
     <div class="table-wrap">
@@ -142,15 +186,14 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
   if (totalProfitEl) {
     totalProfitEl.textContent = fmtDKK(totalProfit);
 
-    // farve (pos/neg) på selve “value”
     totalProfitEl.classList.remove("pos", "neg");
     const cls = clsByNumber(totalProfit);
     if (cls) totalProfitEl.classList.add(cls);
   }
 
-  // Sørg for at datoen i titlen er korrekt (dd.mm.yyyy)
   if (totalProfitBox && purchaseDateISO) {
     const pretty = purchaseDateISO.split("-").reverse().join(".");
+    // childNodes[0] er teksten før <br>
     totalProfitBox.childNodes[0].textContent = `Samlet gevinst/tab siden ${pretty}:`;
   }
 }
@@ -167,7 +210,7 @@ function renderRows(rows) {
     .map(r => {
       return `
         <tr>
-          <td>${r.name}</td>
+          <td>${escapeHtml(r.name)}</td>
 
           <td class="${clsByNumber(r.profitPct)}">
             ${fmtPct(r.profitPct)}
@@ -178,7 +221,7 @@ function renderRows(rows) {
           </td>
 
           <td>
-            ${fmtNum(r.currentPrice, 2)} ${r.currency}
+            ${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}
           </td>
 
           <td>
@@ -207,7 +250,6 @@ function toDKK(price, currency, eurDkk) {
   if (c === "DKK") return p;
   if (c === "EUR") return p * Number(eurDkk || 0);
 
-  // fallback: hvis ukendt valuta, så behandl som DKK for ikke at smadre UI
   return p;
 }
 
@@ -215,8 +257,8 @@ function toDKK(price, currency, eurDkk) {
    AFSNIT 07 – Hovedrender: portfolio
    Fix:
    - Ingen dobbelt “Seneste kurs”
-   - lastUpdatedEl viser kun “Seneste handelsdag: …”
-   - statusTextEl viser OK + evt. “X dage gammel”
+   - lastUpdatedEl: “Seneste handelsdag: …”
+   - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
 
 export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
@@ -228,17 +270,16 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
 
   const updatedAt = holdings?.updatedAt || list[0]?.updatedAt || null;
 
-  buildSkeleton(container);
+  // NYT: buildSkeleton får listen, så vi kan lave 3 canvases (layout) pr. fond
+  buildSkeleton(container, list);
 
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
 
-  /* === LABEL: Seneste handelsdag === */
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent = "Seneste handelsdag: " + formatDateTimeLocal(updatedAt);
   }
 
-  /* === STATUS: OK + evt. alder (uden at gentage “Seneste kurs”) === */
   if (statusTextEl) {
     if (updatedDate && !isSameLocalDate(updatedDate, now)) {
       const days = diffDaysLocal(updatedDate, now);
