@@ -82,12 +82,26 @@ function diffDaysLocal(older, newer) {
 
 /* =========================================================
    AFSNIT 03 – UI helpers (skeleton/boxes)
+   VIGTIGT: Totals markup matcher CSS i components.css:
+   .totals + 2 x h3 + span.value  (3D bokse)
    ========================================================= */
 
 function buildSkeleton(container) {
   container.innerHTML = `
-    <div class="totals-grid" id="totalsGrid"></div>
+    <!-- Totals (3D bokse) -->
+    <div class="totals" id="totals">
+      <h3 id="totalValueBox">
+        Samlet porteføljeværdi:<br>
+        <span class="value" id="totalValue">—</span>
+      </h3>
 
+      <h3 id="totalProfitBox">
+        Samlet gevinst/tab siden 10.09.2025:<br>
+        <span class="value" id="totalProfit">—</span>
+      </h3>
+    </div>
+
+    <!-- Tabel -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -115,24 +129,30 @@ function renderInfoBox(container, text) {
 }
 
 /* =========================================================
-   AFSNIT 04 – Totals (3D bokse)
+   AFSNIT 04 – Totals (3D bokse) – Udfyld værdier
    ========================================================= */
 
 function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
-  const totalsGrid = document.getElementById("totalsGrid");
-  if (!totalsGrid) return;
+  const totalValueEl = document.getElementById("totalValue");
+  const totalProfitEl = document.getElementById("totalProfit");
+  const totalProfitBox = document.getElementById("totalProfitBox");
 
-  totalsGrid.innerHTML = `
-    <div class="total-card">
-      <div class="total-title">Samlet porteføljeværdi:</div>
-      <div class="total-pill">${fmtDKK(totalValue)}</div>
-    </div>
+  if (totalValueEl) totalValueEl.textContent = fmtDKK(totalValue);
 
-    <div class="total-card">
-      <div class="total-title">Samlet gevinst/tab siden ${purchaseDateISO.split("-").reverse().join(".")}:</div>
-      <div class="total-pill ${clsByNumber(totalProfit)}">${fmtDKK(totalProfit)}</div>
-    </div>
-  `;
+  if (totalProfitEl) {
+    totalProfitEl.textContent = fmtDKK(totalProfit);
+
+    // farve (pos/neg) på selve “value”
+    totalProfitEl.classList.remove("pos", "neg");
+    const cls = clsByNumber(totalProfit);
+    if (cls) totalProfitEl.classList.add(cls);
+  }
+
+  // Sørg for at datoen i titlen er korrekt (dd.mm.yyyy)
+  if (totalProfitBox && purchaseDateISO) {
+    const pretty = purchaseDateISO.split("-").reverse().join(".");
+    totalProfitBox.childNodes[0].textContent = `Samlet gevinst/tab siden ${pretty}:`;
+  }
 }
 
 /* =========================================================
@@ -193,6 +213,10 @@ function toDKK(price, currency, eurDkk) {
 
 /* =========================================================
    AFSNIT 07 – Hovedrender: portfolio
+   Fix:
+   - Ingen dobbelt “Seneste kurs”
+   - lastUpdatedEl viser kun “Seneste handelsdag: …”
+   - statusTextEl viser OK + evt. “X dage gammel”
    ========================================================= */
 
 export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
@@ -209,25 +233,19 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
 
-  /* === A: LABEL (tydeligere) === */
+  /* === LABEL: Seneste handelsdag === */
   if (lastUpdatedEl) {
-    lastUpdatedEl.textContent =
-      "Seneste kurs fra: " + formatDateTimeLocal(updatedAt);
+    lastUpdatedEl.textContent = "Seneste handelsdag: " + formatDateTimeLocal(updatedAt);
   }
 
-  /* === C: STATUS (senest tjekket + alder) === */
+  /* === STATUS: OK + evt. alder (uden at gentage “Seneste kurs”) === */
   if (statusTextEl) {
-    const latestTxt = formatDateTimeLocal(updatedAt);
-    const checkedTxt = formatDateTimeLocal(now);
-
     if (updatedDate && !isSameLocalDate(updatedDate, now)) {
       const days = diffDaysLocal(updatedDate, now);
       statusTextEl.textContent =
-        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel). ` +
-        `Seneste kurs: ${latestTxt}. Senest tjekket: ${checkedTxt}.`;
+        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel).`;
     } else {
-      statusTextEl.textContent =
-        `OK – data vist. Seneste kurs: ${latestTxt}. Senest tjekket: ${checkedTxt}.`;
+      statusTextEl.textContent = "OK – data vist.";
     }
   }
 
