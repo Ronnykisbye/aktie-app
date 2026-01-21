@@ -120,7 +120,7 @@ function buildSkeleton(container) {
         </caption>
         <thead>
           <tr>
-            <th>Fond</th>
+         
             <th>Udvikling (%)</th>
             <th>Udvikling (DKK)</th>
             <th>Kurs</th>
@@ -194,7 +194,6 @@ function renderMini(rows) {
     .map(r => {
       return `
         <tr>
-          <td>${escapeHtml(r.name)}</td>
           <td class="${clsByNumber(r.profitPct)}">${fmtPct(r.profitPct)}</td>
           <td class="${clsByNumber(r.profitDKK)}">${fmtDKK(r.profitDKK)}</td>
           <td>${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}</td>
@@ -203,6 +202,7 @@ function renderMini(rows) {
     })
     .join("");
 }
+
 
 /* =========================================================
    AFSNIT 06 – Tabelrækker (fuld)
