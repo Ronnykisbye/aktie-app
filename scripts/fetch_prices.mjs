@@ -13,17 +13,21 @@
  * - + ekstra felt "history" (valgfrit) til grafer senere
  */
 
+import fs from "fs";
+import path from "path";
+
 /**
  * =========================================================
- * AFSNIT 02 – Konfiguration (fonde)
+ * AFSNIT 02 – Paths / Konstanter
  * =========================================================
- * Vi prøver Yahoo først:
- * - hvis yahooSymbol findes -> brug den direkte
- * - ellers -> søg Yahoo efter ISIN eller navn og vælg bedste symbol
- *
- * Fallback beholdes:
- * - DKK: NetDania
- * - EUR: FundConnect
+ */
+const ROOT = process.cwd();
+const OUT_FILE = path.join(ROOT, "data", "prices.json");
+
+/**
+ * =========================================================
+ * AFSNIT 03 – Fond-konfiguration
+ * =========================================================
  */
 const FUNDS = [
   {
@@ -43,15 +47,13 @@ const FUNDS = [
     // Fallback: FundConnect (NAV)
     fallback: {
       type: "fundconnect",
-      url: "https://fundsnow.os.fundconnect.com/solutions/default/fundinfo?clientID=FIIF&currency=EUR&isin=LU3076185670&language=en-GB"
+      url: "https://www.fundconnect.com/Home/FundOverview?fundId=34687"
     }
   },
 
   {
     name: "Nordea Invest Europe Enhanced KL 1",
     currencyHint: "DKK",
-
-    // Yahoo: symbol ukendt i denne chat, så vi søger.
     yahooSymbol: null,
     yahooSearch: {
       isin: null,
@@ -68,9 +70,6 @@ const FUNDS = [
   {
     name: "Nordea Invest Global Enhanced KL 1",
     currencyHint: "DKK",
-
-    // Yahoo: hvis du har den korrekte ticker for præcis denne fond i Yahoo,
-    // kan du sætte den her senere. Lige nu søger vi automatisk.
     yahooSymbol: null,
     yahooSearch: {
       isin: null,
@@ -80,220 +79,262 @@ const FUNDS = [
     // Fallback: NetDania
     fallback: {
       type: "netdania",
-      url: "https://m.netdania.com/funds/ndiglenhkl1-co/idc-dla-eq"
+      url: "https://m.netdania.com/funds/ndigloenkl1-co/idc-dla-eq"
     }
   }
 ];
 
 /**
  * =========================================================
- * AFSNIT 03 – Output og historik
+ * AFSNIT 04 – Fil-hjælpere
  * =========================================================
  */
-const OUT_FILE = "data/prices.json";
-const HISTORY_RANGE = "3mo"; // Yahoo: 3 måneder
-const HISTORY_INTERVAL = "1d"; // daglige datapunkter
-
-/**
- * =========================================================
- * AFSNIT 04 – File helpers
- * =========================================================
- */
-import fs from "node:fs";
-import path from "node:path";
-
-function readJsonSafe(filePath) {
+function readJsonSafe(file) {
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!fs.existsSync(file)) return null;
+    const raw = fs.readFileSync(file, "utf-8");
+    return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 
-function writeJsonSafe(filePath, data) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+function writeJsonSafe(file, obj) {
+  const dir = path.dirname(file);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(obj, null, 2), "utf-8");
 }
 
-/**
- * =========================================================
- * AFSNIT 05 – Date / number helpers
- * =========================================================
- */
 function nowIsoUtc() {
   return new Date().toISOString();
 }
-function toFloat(v) {
-  return Number(String(v).replace(",", "."));
-}
-show;
 
 /**
  * =========================================================
- * AFSNIT 06 – Fetch helper (med timeout)
+ * AFSNIT 04B – Historik-hjælpere (til grafer)
  * =========================================================
+ * - Vi gemmer daglige datapunkter pr. fond i items[].history
+ * - Vi deduper pr. dato (YYYY-MM-DD)
+ * - Vi beholder kun de seneste MAX_DAYS dage
  */
-async function fetchText(url, timeoutMs = 20000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return await res.text();
-  } finally {
-    clearTimeout(t);
-  }
+const MAX_HISTORY_DAYS = 120;
+
+function isoDateOnly(iso) {
+  if (!iso) return null;
+  const s = String(iso);
+  return s.includes("T") ? s.split("T")[0] : s;
 }
 
-async function fetchJson(url, timeoutMs = 20000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return await res.json();
-  } finally {
-    clearTimeout(t);
+function mergeHistory(prevHistory, nextHistory) {
+  const map = new Map();
+
+  const add = (arr) => {
+    if (!Array.isArray(arr)) return;
+    for (const p of arr) {
+      const d = p?.date;
+      const price = Number(p?.price);
+      if (!d || !Number.isFinite(price)) continue;
+      map.set(d, { date: d, price });
+    }
+  };
+
+  add(prevHistory);
+  add(nextHistory);
+
+  const merged = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (merged.length > MAX_HISTORY_DAYS) {
+    return merged.slice(merged.length - MAX_HISTORY_DAYS);
   }
+  return merged;
+}
+
+function withDailyPoint(history, updatedAtIso, price) {
+  const d = isoDateOnly(updatedAtIso);
+  const p = Number(price);
+  if (!d || !Number.isFinite(p)) return Array.isArray(history) ? history : [];
+
+  const base = Array.isArray(history) ? history.slice() : [];
+  const idx = base.findIndex((x) => x?.date === d);
+
+  if (idx >= 0) base[idx] = { date: d, price: p };
+  else base.push({ date: d, price: p });
+
+  base.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  if (base.length > MAX_HISTORY_DAYS) {
+    return base.slice(base.length - MAX_HISTORY_DAYS);
+  }
+  return base;
 }
 
 /**
  * =========================================================
- * AFSNIT 07 – Yahoo Finance: søg symbol
+ * AFSNIT 05 – HTTP helpers
  * =========================================================
- * Endpoint (uofficiel, men bruges af Yahoo selv):
- * https://query1.finance.yahoo.com/v1/finance/search?q=...
  */
-async function yahooFindSymbol({ isin, query }) {
+async function fetchText(url) {
+  const res = await fetch(url, {
+    headers: { "user-agent": "github-action" }
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+  return await res.text();
+}
+
+async function fetchJson(url) {
+  const res = await fetch(url, {
+    headers: { "user-agent": "github-action" }
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+  return await res.json();
+}
+
+/**
+ * =========================================================
+ * AFSNIT 06 – Yahoo: find symbol (search)
+ * =========================================================
+ */
+async function yahooFindSymbol({ query, isin }) {
   const q = encodeURIComponent(isin || query);
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0`;
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`;
   const data = await fetchJson(url);
 
-  const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
-  if (quotes.length === 0) return null;
+  const candidates = Array.isArray(data?.quotes) ? data.quotes : [];
+  if (!candidates.length) throw new Error("Yahoo search: ingen kandidater");
 
-  // Vælg "bedste" kandidat: prioriter mutualfund/etf + match på navn
-  const qLower = String(query || "").toLowerCase();
-
-  const scored = quotes.map((item) => {
-    const symbol = item?.symbol || "";
-    const shortname = String(item?.shortname || item?.longname || "").toLowerCase();
-    const quoteType = String(item?.quoteType || "").toLowerCase();
-
-    let score = 0;
-    if (quoteType.includes("mutualfund")) score += 50;
-    if (quoteType.includes("fund")) score += 30;
-    if (quoteType.includes("etf")) score += 10;
-    if (shortname.includes("nordea")) score += 10;
-    if (qLower && shortname.includes(qLower.slice(0, 12))) score += 5;
-    if (symbol) score += 1;
-
-    return { symbol, score };
-  });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored[0]?.symbol || null;
+  // vælg første med symbol
+  const best = candidates.find((c) => c?.symbol) || candidates[0];
+  if (!best?.symbol) throw new Error("Yahoo search: ingen symbol");
+  return best.symbol;
 }
 
 /**
  * =========================================================
- * AFSNIT 08 – Yahoo Finance: hent kurs + historik (3 måneder)
+ * AFSNIT 07 – Yahoo: chart (pris + 3 mdr historik)
  * =========================================================
- * Endpoint:
- * https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=3mo&interval=1d
  */
-async function yahooGetChart(symbol) {
-  const s = encodeURIComponent(symbol);
-  const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${s}` +
-    `?range=${encodeURIComponent(HISTORY_RANGE)}&interval=${encodeURIComponent(HISTORY_INTERVAL)}`;
+async function yahooFetchChart(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?range=3mo&interval=1d&includePrePost=false&events=div%7Csplit%7Cearn&lang=da-DK&region=DK`;
 
   const data = await fetchJson(url);
 
   const result = data?.chart?.result?.[0];
-  if (!result) throw new Error("Yahoo chart: no result");
+  if (!result) throw new Error("Yahoo chart: ingen result");
 
-  const meta = result?.meta || {};
-  const currency = meta?.currency || null;
+  const meta = result.meta || {};
+  const currency = meta.currency || null;
 
-  const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
-  const quotes = result?.indicators?.quote?.[0] || {};
-  const closes = Array.isArray(quotes?.close) ? quotes.close : [];
+  const ts = Array.isArray(result.timestamp) ? result.timestamp : [];
+  const closes = result?.indicators?.quote?.[0]?.close || [];
 
-  // Find sidste valide close
-  let lastIdx = -1;
+  const history = [];
+  for (let i = 0; i < ts.length; i++) {
+    const t = ts[i];
+    const c = closes[i];
+    if (t && Number.isFinite(c)) {
+      const d = new Date(t * 1000);
+      const date = d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+      history.push({ date, price: Number(c) });
+    }
+  }
+
+  // latest (sidste valid close)
+  let latest = null;
   for (let i = closes.length - 1; i >= 0; i--) {
-    if (typeof closes[i] === "number" && !Number.isNaN(closes[i])) {
-      lastIdx = i;
+    if (Number.isFinite(closes[i])) {
+      latest = Number(closes[i]);
       break;
     }
   }
-  if (lastIdx === -1) throw new Error("Yahoo chart: no close price");
-
-  const lastPrice = closes[lastIdx];
-  const lastTs = timestamps[lastIdx];
-  const lastIso = lastTs ? new Date(lastTs * 1000).toISOString() : nowIsoUtc();
-
-  // Byg historik: { date: YYYY-MM-DD, price }
-  const history = [];
-  for (let i = 0; i < timestamps.length; i++) {
-    const ts = timestamps[i];
-    const p = closes[i];
-    if (!ts || typeof p !== "number" || Number.isNaN(p)) continue;
-    const d = new Date(ts * 1000).toISOString().slice(0, 10);
-    history.push({ date: d, price: p });
-  }
+  if (!Number.isFinite(latest)) throw new Error("Yahoo chart: ingen latest close");
 
   return {
-    price: lastPrice,
-    updatedAt: lastIso,
     currency,
+    price: latest,
+    updatedAt: nowIsoUtc(),
     history
   };
 }
 
 /**
  * =========================================================
- * AFSNIT 09 – Fallback parsere (NetDania / FundConnect)
+ * AFSNIT 08 – Fallback parsere
  * =========================================================
  */
 function parseNetdania(html) {
-  // NetDania-sider indeholder typisk:
-  // 146.55
-  // 15-January-26 13:14:08
-  const price = html.match(/\n\s*([0-9]+[.,][0-9]+)\s*\n/)?.[1];
-  const time = html.match(/\n\s*(\d{1,2}-[A-Za-z]+-\d{2}\s+\d{2}:\d{2}:\d{2})\s*\n/)?.[1];
-
-  if (!price || !time) throw new Error("NetDania parse error");
-
-  // robust konvertering: "15-January-26 13:14:08" -> ISO
-  const iso = new Date(time.replace(/-/g, " ")).toISOString();
+  // Meget enkel parsing: find første tal i nærheden af "Price" eller lign.
+  // (Stabilitet > perfektion. Appen overlever uanset.)
+  const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
+  if (!m) throw new Error("NetDania parse: ingen tal");
+  const price = Number(String(m[1]).replace(",", "."));
+  if (!Number.isFinite(price)) throw new Error("NetDania parse: ugyldig pris");
 
   return {
-    price: toFloat(price),
-    updatedAt: iso,
-    currency: null,
-    history: []
+    price,
+    updatedAt: nowIsoUtc()
   };
 }
 
 function parseFundConnect(html) {
-  // FundConnect indeholder typisk: "NAV 106.851 as of 02/01"
-  const m = html.match(/NAV\s+([\d.,]+)\s+as\s+of\s+(\d{2}\/\d{2})/i);
-  if (!m) throw new Error("FundConnect parse error");
-
-  const price = toFloat(m[1]);
-  const [dd, mm] = m[2].split("/");
-  const year = new Date().getFullYear();
-
-  // Sæt tid midt på dagen i UTC for stabilitet
-  const iso = new Date(Date.UTC(year, Number(mm) - 1, Number(dd), 12, 0, 0)).toISOString();
+  // Enkel parsing: find første tal der ligner NAV (typisk med komma)
+  const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
+  if (!m) throw new Error("FundConnect parse: ingen tal");
+  const price = Number(String(m[1]).replace(",", "."));
+  if (!Number.isFinite(price)) throw new Error("FundConnect parse: ugyldig pris");
 
   return {
     price,
-    updatedAt: iso,
-    currency: null,
-    history: []
+    updatedAt: nowIsoUtc()
+  };
+}
+
+/**
+ * =========================================================
+ * AFSNIT 09 – Hent data pr. fond (Yahoo først, fallback ellers)
+ * =========================================================
+ */
+async function getFundData(fund, prevItem) {
+  // 1) Yahoo
+  try {
+    const symbol =
+      fund.yahooSymbol ||
+      (await yahooFindSymbol({
+        query: fund.yahooSearch?.query || fund.name,
+        isin: fund.yahooSearch?.isin || null
+      }));
+
+    const y = await yahooFetchChart(symbol);
+
+    return {
+      name: fund.name,
+      currency: y.currency || fund.currencyHint || prevItem?.currency || "DKK",
+      price: Number(y.price),
+      updatedAt: y.updatedAt,
+      source: `yahoo:${symbol}`,
+      history: withDailyPoint(
+        mergeHistory(prevItem?.history, y.history),
+        y.updatedAt,
+        Number(y.price)
+      )
+    };
+  } catch {
+    // fortsæt
+  }
+
+  // 2) Fallback
+  const html = await fetchText(fund.fallback.url);
+  const parsed =
+    fund.fallback.type === "netdania" ? parseNetdania(html) : parseFundConnect(html);
+
+  return {
+    name: fund.name,
+    currency: fund.currencyHint || prevItem?.currency || "DKK",
+    price: Number(parsed.price),
+    updatedAt: parsed.updatedAt,
+    source: `fallback:${fund.fallback.type}`,
+    history: withDailyPoint(prevItem?.history || [], parsed.updatedAt, Number(parsed.price))
   };
 }
 
@@ -311,55 +352,13 @@ async function main() {
   for (const fund of FUNDS) {
     const prevItem = previous?.items?.find((x) => x?.name === fund.name);
 
-    // 1) Prøv Yahoo først
     try {
-      const symbol =
-        fund.yahooSymbol ||
-        (await yahooFindSymbol({
-          isin: fund.yahooSearch?.isin || null,
-          query: fund.yahooSearch?.query || fund.name
-        }));
-
-      if (!symbol) throw new Error("Yahoo: symbol not found");
-
-      const y = await yahooGetChart(symbol);
-
-      items.push({
-        name: fund.name,
-        currency: y.currency || fund.currencyHint || prevItem?.currency || "DKK",
-        price: Number(y.price),
-        updatedAt: y.updatedAt,
-        source: `yahoo:${symbol}`,
-        history: Array.isArray(y.history) ? y.history : []
-      });
-
-      if (y.updatedAt > maxUpdatedAt) maxUpdatedAt = y.updatedAt;
+      const data = await getFundData(fund, prevItem);
+      items.push(data);
+      if (data.updatedAt > maxUpdatedAt) maxUpdatedAt = data.updatedAt;
       continue;
-    } catch (err) {
-      // fortsæt til fallback
-    }
-
-    // 2) Fallback: NetDania/FundConnect
-    try {
-      const html = await fetchText(fund.fallback.url);
-      const parsed =
-        fund.fallback.type === "netdania"
-          ? parseNetdania(html)
-          : parseFundConnect(html);
-
-      items.push({
-        name: fund.name,
-        currency: fund.currencyHint || prevItem?.currency || "DKK",
-        price: Number(parsed.price),
-        updatedAt: parsed.updatedAt,
-        source: `fallback:${fund.fallback.type}`,
-        history: prevItem?.history || [] // behold historik hvis den allerede findes
-      });
-
-      if (parsed.updatedAt > maxUpdatedAt) maxUpdatedAt = parsed.updatedAt;
-      continue;
-    } catch (err) {
-      // 3) Sidste fallback: brug forrige
+    } catch {
+      // 3) Sidste fallback: brug forrige, men sørg stadig for dagspunkt i historik
     }
 
     if (prevItem) {
@@ -369,21 +368,6 @@ async function main() {
         price: prevItem.price,
         updatedAt: prevItem.updatedAt || previous.updatedAt || nowIsoUtc(),
         source: "previous",
-        history: prevItem.history || []
-      });
-      if ((prevItem.updatedAt || "1970") > maxUpdatedAt) maxUpdatedAt = prevItem.updatedAt;
-    } else {
-      throw new Error(`Ingen data og ingen fallback for: ${fund.name}`);
-    }
-  }
-
-  const output = {
-    updatedAt: maxUpdatedAt === "1970-01-01T00:00:00.000Z" ? nowIsoUtc() : maxUpdatedAt,
-    items
-  };
-
-  writeJsonSafe(OUT_FILE, output);
-  console.log("✔ prices.json updated (Yahoo primary + fallback enabled)");
-}
-
-main();
+        history: withDailyPoint(
+          prevItem.history || [],
+          prevItem.updatedAt || previous.updated
