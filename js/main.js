@@ -15,11 +15,12 @@ const el = {
   lastUpdated: document.getElementById("lastUpdated"),
   themeToggle: document.getElementById("themeToggle"),
 
-  // graf UI (kun toggle – selve graf-logik kommer senere)
+  // graf UI
   graphBtn: document.getElementById("graph"),
   graphPanel: document.getElementById("graphPanel"),
   graphClose: document.getElementById("graphClose"),
-  graphMode: document.getElementById("graphMode")
+  graphMode: document.getElementById("graphMode"),
+  graphCanvas: document.getElementById("graphCanvas")
 };
 
 /* =========================================================
@@ -56,7 +57,6 @@ function setStatus(text) {
 function hasValidHoldingsQuantities(holdings) {
   const items = holdings?.items || [];
   if (!items.length) return false;
-  // Hvis alle quantity er 0/mangler, så er CSV-merge ikke slået igennem
   return items.some(x => Number(x.quantity ?? x.Antal ?? 0) > 0);
 }
 
@@ -79,7 +79,6 @@ async function mergeFromFondeCsv(holdings) {
   if (!res.ok) throw new Error("Kunne ikke hente fonde.csv (" + res.status + ")");
   const csvText = await res.text();
 
-  // Brug PapaParse hvis den findes, ellers simpel parser
   const rows = (window.Papa && window.Papa.parse)
     ? window.Papa.parse(csvText, { header: true, skipEmptyLines: true }).data
     : parseCsvSimple(csvText);
@@ -106,7 +105,190 @@ async function mergeFromFondeCsv(holdings) {
 }
 
 /* =========================================================
-   AFSNIT 06 – Core: Load + render
+   AFSNIT 06 – Graf: beregning + tegning (canvas)
+   ========================================================= */
+
+// Vi gemmer seneste data, så grafen kan tegnes uden ekstra fetch
+let latest = {
+  holdings: null,
+  eurDkk: 0
+};
+
+function toDKK(price, currency, eurDkk) {
+  const p = Number(price);
+  if (!Number.isFinite(p)) return 0;
+  const c = String(currency || "DKK").toUpperCase();
+  if (c === "DKK") return p;
+  if (c === "EUR") return p * Number(eurDkk || 0);
+  return p;
+}
+
+function buildGraphSeries(mode, holdings, eurDkk) {
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+
+  const series = list.map(it => {
+    const name = it.name || "Ukendt";
+
+    const units = Number(it.quantity ?? it.Antal ?? 0);
+    const currency = (it.currency || "DKK").toUpperCase();
+
+    const current = Number(it.price ?? it.Kurs ?? 0);
+    const buy = Number(it.buyPrice ?? it.KøbsKurs ?? 0);
+
+    const currentDKK = toDKK(current, currency, eurDkk);
+    const buyDKK = toDKK(buy, currency, eurDkk);
+
+    const profitDKK = units * (currentDKK - buyDKK);
+
+    if (mode === "profit") {
+      return { label: name, value: profitDKK, unit: "DKK" };
+    }
+
+    if (mode === "price_all") {
+      return { label: name, value: currentDKK, unit: "DKK" };
+    }
+
+    return { label: name, value: 0, unit: "" };
+  });
+
+  return series;
+}
+
+function clearCanvas(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+}
+
+function drawBarChart(canvas, title, series) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  clearCanvas(ctx, w, h);
+
+  // Layout
+  const padL = 40;
+  const padR = 16;
+  const padT = 28;
+  const padB = 42;
+
+  // Titel
+  ctx.font = "bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "#cfe8ff";
+  ctx.fillText(title, padL, 18);
+
+  if (!series?.length) {
+    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.fillStyle = "#cfe8ff";
+    ctx.fillText("Ingen data til graf.", padL, 50);
+    return;
+  }
+
+  const values = series.map(s => Number(s.value) || 0);
+  const maxAbs = Math.max(1, ...values.map(v => Math.abs(v)));
+
+  // Akse-område
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const baseY = padT + chartH; // bundlinje
+
+  // 0-linje hvis der er både +/-
+  const hasNeg = values.some(v => v < 0);
+  const hasPos = values.some(v => v > 0);
+
+  let zeroY = baseY;
+  if (hasNeg && hasPos) {
+    // midtlinje
+    zeroY = padT + chartH / 2;
+  } else if (hasNeg && !hasPos) {
+    // 0-linje i top
+    zeroY = padT;
+  } else {
+    // 0-linje i bund
+    zeroY = baseY;
+  }
+
+  // Tegn akser
+  ctx.strokeStyle = "rgba(207,232,255,0.35)";
+  ctx.lineWidth = 1;
+
+  // Y-akse
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, baseY);
+  ctx.stroke();
+
+  // 0-linje
+  ctx.beginPath();
+  ctx.moveTo(padL, zeroY);
+  ctx.lineTo(padL + chartW, zeroY);
+  ctx.stroke();
+
+  // Bars
+  const barGap = 14;
+  const barW = Math.max(24, Math.floor((chartW - barGap * (series.length - 1)) / series.length));
+  const totalBarsW = barW * series.length + barGap * (series.length - 1);
+  const startX = padL + Math.max(0, Math.floor((chartW - totalBarsW) / 2));
+
+  ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.textAlign = "center";
+
+  series.forEach((s, i) => {
+    const v = Number(s.value) || 0;
+
+    const x = startX + i * (barW + barGap);
+    const scaled = (Math.abs(v) / maxAbs) * (hasNeg && hasPos ? chartH / 2 : chartH);
+
+    const yTop = v >= 0 ? (zeroY - scaled) : zeroY;
+    const barH = scaled;
+
+    // Farve: grøn for +, rød for -, blå for 0
+    ctx.fillStyle = v > 0 ? "rgba(0,200,140,0.85)" : v < 0 ? "rgba(230,80,80,0.85)" : "rgba(50,150,255,0.75)";
+    ctx.fillRect(x, yTop, barW, barH);
+
+    // Værdi-tekst
+    ctx.fillStyle = "#eaf6ff";
+    const valueText = (Math.round(v * 100) / 100).toLocaleString("da-DK", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " " + (s.unit || "");
+    const vtY = v >= 0 ? (yTop - 6) : (yTop + barH + 14);
+    ctx.fillText(valueText, x + barW / 2, vtY);
+
+    // Label (kort)
+    const label = String(s.label || "").replace("Nordea ", "");
+    ctx.fillStyle = "rgba(207,232,255,0.85)";
+    ctx.fillText(label, x + barW / 2, baseY + 20);
+  });
+
+  // footer note
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(207,232,255,0.6)";
+  ctx.fillText("Bemærk: Grafen viser nuværende data (ingen historik endnu).", padL, h - 12);
+}
+
+function renderGraphIfPossible() {
+  if (!el.graphPanel || el.graphPanel.hidden) return;
+  if (!el.graphMode) return;
+
+  const mode = el.graphMode.value;
+  if (!mode) return;
+
+  const holdings = latest.holdings;
+  const eurDkk = latest.eurDkk;
+
+  if (!holdings) return;
+
+  if (mode === "profit") {
+    const series = buildGraphSeries("profit", holdings, eurDkk);
+    drawBarChart(el.graphCanvas, "Gevinst/tab (DKK) pr. fond", series);
+  } else if (mode === "price_all") {
+    const series = buildGraphSeries("price_all", holdings, eurDkk);
+    drawBarChart(el.graphCanvas, "Nuværende kurs (DKK) pr. fond", series);
+  }
+}
+
+/* =========================================================
+   AFSNIT 07 – Core: Load + render
    ========================================================= */
 async function loadAndRender() {
   try {
@@ -119,11 +301,14 @@ async function loadAndRender() {
 
     let holdings = holdingsRaw;
 
-    // Fallback hvis hard reload gav holdings uden antal/købskurs
     if (!hasValidHoldingsQuantities(holdings)) {
       console.warn("⚠️ CSV merge mangler – kører fallback merge fra fonde.csv");
       holdings = await mergeFromFondeCsv(holdings);
     }
+
+    // Gem seneste data til graf
+    latest.holdings = holdings;
+    latest.eurDkk = eurDkk;
 
     renderPortfolio({
       container: el.table,
@@ -134,6 +319,9 @@ async function loadAndRender() {
       purchaseDateISO: PURCHASE_DATE_ISO
     });
 
+    // Hvis grafpanelet er åbent, redraw
+    renderGraphIfPossible();
+
   } catch (err) {
     console.error(err);
     setStatus("Fejl – kunne ikke hente data.");
@@ -142,26 +330,35 @@ async function loadAndRender() {
 }
 
 /* =========================================================
-   AFSNIT 07 – Events
+   AFSNIT 08 – Events
    ========================================================= */
 function initEvents() {
   if (el.refresh) el.refresh.addEventListener("click", loadAndRender);
 
-  // Graf UI (kun åbne/lukke i dette trin)
+  // Graf UI: åbne/lukke + redraw
   if (el.graphBtn && el.graphPanel) {
     el.graphBtn.addEventListener("click", () => {
       el.graphPanel.hidden = !el.graphPanel.hidden;
+      // Tegn hvis åbent og mode allerede valgt
+      renderGraphIfPossible();
     });
   }
+
   if (el.graphClose && el.graphPanel) {
     el.graphClose.addEventListener("click", () => {
       el.graphPanel.hidden = true;
     });
   }
+
+  if (el.graphMode) {
+    el.graphMode.addEventListener("change", () => {
+      renderGraphIfPossible();
+    });
+  }
 }
 
 /* =========================================================
-   AFSNIT 08 – Boot
+   AFSNIT 09 – Boot
    ========================================================= */
 initTheme();
 initEvents();
