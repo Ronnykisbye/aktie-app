@@ -111,7 +111,9 @@ function buildSkeleton(container) {
 
     <!-- =====================================================
          AFSNIT 03B – OVERBLIK (3 fonde)
-         Fix: kun én overskrift (caption) – ikke dobbelt header
+         Fix:
+         - “Navn” er med
+         - Ingen “Udvikling …” tekst i headers (kun korte labels)
          ===================================================== -->
     <div class="table-wrap" style="margin-top:14px;">
       <table class="data-table">
@@ -120,9 +122,9 @@ function buildSkeleton(container) {
         </caption>
         <thead>
           <tr>
-         
-            <th>Udvikling (%)</th>
-            <th>Udvikling (DKK)</th>
+            <th>Navn</th>
+            <th>%</th>
+            <th>DKK</th>
             <th>Kurs</th>
           </tr>
         </thead>
@@ -136,11 +138,11 @@ function buildSkeleton(container) {
         <thead>
           <tr>
             <th>Navn</th>
-            <th>Udvikling (%)</th>
-            <th>Udvikling (DKK)</th>
+            <th>%</th>
+            <th>DKK</th>
             <th>Kurs</th>
             <th>Antal</th>
-            <th>Kurs (DKK)</th>
+            <th>Kurs DKK</th>
           </tr>
         </thead>
         <tbody id="rowsBody"></tbody>
@@ -177,7 +179,7 @@ function renderTotals({ totalValue, totalProfit, purchaseDateISO }) {
   }
 
   if (totalProfitBox && purchaseDateISO) {
-    const pretty = purchaseDateISO.split("-").reverse().join(".");
+    const pretty = String(purchaseDateISO).split("-").reverse().join(".");
     totalProfitBox.childNodes[0].textContent = `Samlet gevinst/tab siden ${pretty}:`;
   }
 }
@@ -194,6 +196,7 @@ function renderMini(rows) {
     .map(r => {
       return `
         <tr>
+          <td>${escapeHtml(r.name)}</td>
           <td class="${clsByNumber(r.profitPct)}">${fmtPct(r.profitPct)}</td>
           <td class="${clsByNumber(r.profitDKK)}">${fmtDKK(r.profitDKK)}</td>
           <td>${fmtNum(r.currentPrice, 2)} ${escapeHtml(r.currency)}</td>
@@ -202,7 +205,6 @@ function renderMini(rows) {
     })
     .join("");
 }
-
 
 /* =========================================================
    AFSNIT 06 – Tabelrækker (fuld)
@@ -261,9 +263,18 @@ function toDKK(price, currency, eurDkk) {
 
 /* =========================================================
    AFSNIT 08 – Hovedrender: portfolio
+   - lastUpdatedEl: “Seneste handelsdag: …”
+   - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
 
-export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
+export function renderPortfolio({
+  container,
+  statusTextEl,
+  lastUpdatedEl,
+  holdings,
+  eurDkk,
+  purchaseDateISO
+}) {
   if (!container) return;
 
   const list = Array.isArray(holdings)
@@ -315,7 +326,7 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
       currentPrice: price,
       currentPriceDKK: currentDKK,
       profitDKK: profit,
-      profitPct: buyDKK ? (profit / (units * buyDKK)) * 100 : 0,
+      profitPct: buyDKK && units ? (profit / (units * buyDKK)) * 100 : 0,
       valueNow: value
     };
   });
@@ -323,7 +334,7 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
   renderTotals({
     totalValue: rows.reduce((s, r) => s + r.valueNow, 0),
     totalProfit: rows.reduce((s, r) => s + r.profitDKK, 0),
-    purchaseDateISO: "2025-09-10"
+    purchaseDateISO: purchaseDateISO || "2025-09-10"
   });
 
   renderMini(rows);
