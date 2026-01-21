@@ -110,15 +110,15 @@ function buildSkeleton(container) {
     </div>
 
     <!-- =====================================================
-         AFSNIT 03B – OVERBLIK (3 fonde) – synligt “andet design”
-         (Giver hurtigt overblik i skrift og tal)
+         AFSNIT 03B – OVERBLIK (3 fonde)
+         Fix: kun én overskrift (caption) – ikke dobbelt header
          ===================================================== -->
     <div class="table-wrap" style="margin-top:14px;">
       <table class="data-table">
+        <caption style="caption-side: top; padding: 12px 0; font-weight: 700;">
+          Overblik (3 fonde)
+        </caption>
         <thead>
-          <tr>
-            <th colspan="4" style="text-align:center;">Overblik (3 fonde)</th>
-          </tr>
           <tr>
             <th>Fond</th>
             <th>Udvikling (%)</th>
@@ -261,8 +261,6 @@ function toDKK(price, currency, eurDkk) {
 
 /* =========================================================
    AFSNIT 08 – Hovedrender: portfolio
-   - lastUpdatedEl: “Seneste handelsdag: …”
-   - statusTextEl: OK + evt. “X dage gammel”
    ========================================================= */
 
 export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdings, eurDkk }) {
@@ -328,9 +326,6 @@ export function renderPortfolio({ container, statusTextEl, lastUpdatedEl, holdin
     purchaseDateISO: "2025-09-10"
   });
 
-  // NYT: overblik (3 fonde)
   renderMini(rows);
-
-  // eksisterende fuld tabel
   renderRows(rows);
 }
