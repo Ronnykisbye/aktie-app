@@ -11,6 +11,9 @@
  * Output:
  * - data/prices.json (samme felter som før: name, currency, price, updatedAt)
  * - + ekstra felt "history" (valgfrit) til grafer senere
+ *
+ * VIGTIGT (din ønskeliste):
+ * - Vi gemmer kun de 10 seneste historik-punkter pr. fond.
  */
 
 import fs from "fs";
@@ -34,12 +37,9 @@ const FUNDS = [
     name: "Nordea Empower Europe Fund BQ",
     currencyHint: "EUR",
 
-    // Yahoo: vi har ikke 100% bekræftet symbol til "Fund BQ" i denne chat,
-    // så vi søger først på navn + (hvis muligt) ISIN. Du kan senere udfylde yahooSymbol,
-    // hvis du finder den præcise.
+    // Yahoo: ikke 100% bekræftet symbol i denne chat.
     yahooSymbol: null,
     yahooSearch: {
-      // Hvis du kender ISIN, så skriv den her (ellers bliver navn brugt)
       isin: null,
       query: "Nordea Empower Europe Fund BQ"
     },
@@ -111,13 +111,13 @@ function nowIsoUtc() {
 
 /**
  * =========================================================
- * AFSNIT 04B – Historik-hjælpere (til grafer)
+ * AFSNIT 04B – Historik-hjælpere (10 seneste punkter)
  * =========================================================
  * - Vi gemmer daglige datapunkter pr. fond i items[].history
  * - Vi deduper pr. dato (YYYY-MM-DD)
- * - Vi beholder kun de seneste MAX_DAYS dage
+ * - Vi beholder kun de seneste MAX_HISTORY_POINTS punkter
  */
-const MAX_HISTORY_DAYS = 120;
+const MAX_HISTORY_POINTS = 10;
 
 function isoDateOnly(iso) {
   if (!iso) return null;
@@ -143,8 +143,8 @@ function mergeHistory(prevHistory, nextHistory) {
 
   const merged = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 
-  if (merged.length > MAX_HISTORY_DAYS) {
-    return merged.slice(merged.length - MAX_HISTORY_DAYS);
+  if (merged.length > MAX_HISTORY_POINTS) {
+    return merged.slice(merged.length - MAX_HISTORY_POINTS);
   }
   return merged;
 }
@@ -162,8 +162,8 @@ function withDailyPoint(history, updatedAtIso, price) {
 
   base.sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
-  if (base.length > MAX_HISTORY_DAYS) {
-    return base.slice(base.length - MAX_HISTORY_DAYS);
+  if (base.length > MAX_HISTORY_POINTS) {
+    return base.slice(base.length - MAX_HISTORY_POINTS);
   }
   return base;
 }
@@ -202,7 +202,6 @@ async function yahooFindSymbol({ query, isin }) {
   const candidates = Array.isArray(data?.quotes) ? data.quotes : [];
   if (!candidates.length) throw new Error("Yahoo search: ingen kandidater");
 
-  // vælg første med symbol
   const best = candidates.find((c) => c?.symbol) || candidates[0];
   if (!best?.symbol) throw new Error("Yahoo search: ingen symbol");
   return best.symbol;
@@ -240,7 +239,6 @@ async function yahooFetchChart(symbol) {
     }
   }
 
-  // latest (sidste valid close)
   let latest = null;
   for (let i = closes.length - 1; i >= 0; i--) {
     if (Number.isFinite(closes[i])) {
@@ -264,30 +262,19 @@ async function yahooFetchChart(symbol) {
  * =========================================================
  */
 function parseNetdania(html) {
-  // Meget enkel parsing: find første tal i nærheden af "Price" eller lign.
-  // (Stabilitet > perfektion. Appen overlever uanset.)
   const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
   if (!m) throw new Error("NetDania parse: ingen tal");
   const price = Number(String(m[1]).replace(",", "."));
   if (!Number.isFinite(price)) throw new Error("NetDania parse: ugyldig pris");
-
-  return {
-    price,
-    updatedAt: nowIsoUtc()
-  };
+  return { price, updatedAt: nowIsoUtc() };
 }
 
 function parseFundConnect(html) {
-  // Enkel parsing: find første tal der ligner NAV (typisk med komma)
   const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
   if (!m) throw new Error("FundConnect parse: ingen tal");
   const price = Number(String(m[1]).replace(",", "."));
   if (!Number.isFinite(price)) throw new Error("FundConnect parse: ugyldig pris");
-
-  return {
-    price,
-    updatedAt: nowIsoUtc()
-  };
+  return { price, updatedAt: nowIsoUtc() };
 }
 
 /**
@@ -358,17 +345,55 @@ async function main() {
       if (data.updatedAt > maxUpdatedAt) maxUpdatedAt = data.updatedAt;
       continue;
     } catch {
-      // 3) Sidste fallback: brug forrige, men sørg stadig for dagspunkt i historik
+      // 3) Sidste fallback: brug forrige så workflow aldrig dør
     }
 
     if (prevItem) {
+      const fallbackUpdatedAt = prevItem.updatedAt || previous?.updatedAt || nowIsoUtc();
+
       items.push({
         name: fund.name,
-        currency: prevItem.currency,
-        price: prevItem.price,
-        updatedAt: prevItem.updatedAt || previous.updatedAt || nowIsoUtc(),
+        currency: prevItem.currency || fund.currencyHint || "DKK",
+        price: Number(prevItem.price) || 0,
+        updatedAt: fallbackUpdatedAt,
         source: "previous",
         history: withDailyPoint(
           prevItem.history || [],
-          prevItem.updatedAt || previous.updatedAt
+          fallbackUpdatedAt,
+          Number(prevItem.price) || 0
+        )
+      });
 
+      if (fallbackUpdatedAt > maxUpdatedAt) maxUpdatedAt = fallbackUpdatedAt;
+    } else {
+      const fallbackUpdatedAt = previous?.updatedAt || nowIsoUtc();
+
+      items.push({
+        name: fund.name,
+        currency: fund.currencyHint || "DKK",
+        price: 0,
+        updatedAt: fallbackUpdatedAt,
+        source: "missing",
+        history: []
+      });
+
+      if (fallbackUpdatedAt > maxUpdatedAt) maxUpdatedAt = fallbackUpdatedAt;
+    }
+  }
+
+  const out = {
+    updatedAt: maxUpdatedAt,
+    source: "github-action",
+    items
+  };
+
+  writeJsonSafe(OUT_FILE, out);
+  console.log(`✅ Wrote ${OUT_FILE}`);
+  console.log(`updatedAt: ${out.updatedAt}`);
+  console.log(`items: ${out.items.length}`);
+}
+
+main().catch((err) => {
+  console.error("❌ fetch_prices.mjs fejlede:", err);
+  process.exit(1);
+});
