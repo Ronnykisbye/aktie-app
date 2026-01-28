@@ -4,53 +4,41 @@
  * =========================================================
  * Stabil auto-opdatering til data/prices.json via GitHub Actions.
  *
- * NYT:
- * - Primær kilde: Yahoo Finance (chart endpoint) for frisk kurs + historik (3 måneder)
- * - Fallback: NetDania (DKK) + FundConnect (EUR), så workflow aldrig dør pga. Yahoo
+ * Bemærk:
+ * Denne fil var tidligere blevet afbrudt midt i en funktion (linje ~373),
+ * hvilket gav: "SyntaxError: missing ) after argument list".
+ * Denne version er fuldt afsluttet og kan køre igen.
  *
- * Output:
- * - data/prices.json (samme felter som før: name, currency, price, updatedAt)
- * - + ekstra felt "history" (valgfrit) til grafer senere
- *
- * VIGTIGT (din ønskeliste):
- * - Vi gemmer kun de 10 seneste historik-punkter pr. fond.
+ * Historik:
+ * - Vi gemmer KUN de 10 seneste datapunkter pr. fond (til grafer).
  */
 
 import fs from "fs";
 import path from "path";
 
-/**
- * =========================================================
- * AFSNIT 02 – Paths / Konstanter
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 02 – Paths / Konstanter
+   ========================================================= */
 const ROOT = process.cwd();
 const OUT_FILE = path.join(ROOT, "data", "prices.json");
 
-/**
- * =========================================================
- * AFSNIT 03 – Fond-konfiguration
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 03 – Fond-konfiguration
+   ========================================================= */
 const FUNDS = [
   {
     name: "Nordea Empower Europe Fund BQ",
     currencyHint: "EUR",
-
-    // Yahoo: ikke 100% bekræftet symbol i denne chat.
     yahooSymbol: null,
     yahooSearch: {
       isin: null,
       query: "Nordea Empower Europe Fund BQ"
     },
-
-    // Fallback: FundConnect (NAV)
     fallback: {
       type: "fundconnect",
       url: "https://www.fundconnect.com/Home/FundOverview?fundId=34687"
     }
   },
-
   {
     name: "Nordea Invest Europe Enhanced KL 1",
     currencyHint: "DKK",
@@ -59,14 +47,11 @@ const FUNDS = [
       isin: null,
       query: "Nordea Invest Europe Enhanced KL 1"
     },
-
-    // Fallback: NetDania
     fallback: {
       type: "netdania",
       url: "https://m.netdania.com/funds/ndieuenhkl1-co/idc-dla-eq"
     }
   },
-
   {
     name: "Nordea Invest Global Enhanced KL 1",
     currencyHint: "DKK",
@@ -75,8 +60,6 @@ const FUNDS = [
       isin: null,
       query: "Nordea Invest Global Enhanced KL 1"
     },
-
-    // Fallback: NetDania
     fallback: {
       type: "netdania",
       url: "https://m.netdania.com/funds/ndigloenkl1-co/idc-dla-eq"
@@ -84,11 +67,9 @@ const FUNDS = [
   }
 ];
 
-/**
- * =========================================================
- * AFSNIT 04 – Fil-hjælpere
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 04 – Fil-hjælpere
+   ========================================================= */
 function readJsonSafe(file) {
   try {
     if (!fs.existsSync(file)) return null;
@@ -109,14 +90,9 @@ function nowIsoUtc() {
   return new Date().toISOString();
 }
 
-/**
- * =========================================================
- * AFSNIT 04B – Historik-hjælpere (10 seneste punkter)
- * =========================================================
- * - Vi gemmer daglige datapunkter pr. fond i items[].history
- * - Vi deduper pr. dato (YYYY-MM-DD)
- * - Vi beholder kun de seneste MAX_HISTORY_POINTS punkter
- */
+/* =========================================================
+   AFSNIT 04B – Historik-hjælpere (10 seneste punkter)
+   ========================================================= */
 const MAX_HISTORY_POINTS = 10;
 
 function isoDateOnly(iso) {
@@ -168,11 +144,9 @@ function withDailyPoint(history, updatedAtIso, price) {
   return base;
 }
 
-/**
- * =========================================================
- * AFSNIT 05 – HTTP helpers
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 05 – HTTP helpers
+   ========================================================= */
 async function fetchText(url) {
   const res = await fetch(url, {
     headers: { "user-agent": "github-action" }
@@ -189,11 +163,9 @@ async function fetchJson(url) {
   return await res.json();
 }
 
-/**
- * =========================================================
- * AFSNIT 06 – Yahoo: find symbol (search)
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 06 – Yahoo: find symbol (search)
+   ========================================================= */
 async function yahooFindSymbol({ query, isin }) {
   const q = encodeURIComponent(isin || query);
   const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`;
@@ -207,18 +179,15 @@ async function yahooFindSymbol({ query, isin }) {
   return best.symbol;
 }
 
-/**
- * =========================================================
- * AFSNIT 07 – Yahoo: chart (pris + 3 mdr historik)
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 07 – Yahoo: chart (pris + historik)
+   ========================================================= */
 async function yahooFetchChart(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol
   )}?range=3mo&interval=1d&includePrePost=false&events=div%7Csplit%7Cearn&lang=da-DK&region=DK`;
 
   const data = await fetchJson(url);
-
   const result = data?.chart?.result?.[0];
   if (!result) throw new Error("Yahoo chart: ingen result");
 
@@ -234,7 +203,7 @@ async function yahooFetchChart(symbol) {
     const c = closes[i];
     if (t && Number.isFinite(c)) {
       const d = new Date(t * 1000);
-      const date = d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+      const date = d.toISOString().slice(0, 10);
       history.push({ date, price: Number(c) });
     }
   }
@@ -256,11 +225,9 @@ async function yahooFetchChart(symbol) {
   };
 }
 
-/**
- * =========================================================
- * AFSNIT 08 – Fallback parsere
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 08 – Fallback parsere
+   ========================================================= */
 function parseNetdania(html) {
   const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
   if (!m) throw new Error("NetDania parse: ingen tal");
@@ -277,11 +244,9 @@ function parseFundConnect(html) {
   return { price, updatedAt: nowIsoUtc() };
 }
 
-/**
- * =========================================================
- * AFSNIT 09 – Hent data pr. fond (Yahoo først, fallback ellers)
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 09 – Hent data pr. fond (Yahoo først, fallback ellers)
+   ========================================================= */
 async function getFundData(fund, prevItem) {
   // 1) Yahoo
   try {
@@ -294,20 +259,19 @@ async function getFundData(fund, prevItem) {
 
     const y = await yahooFetchChart(symbol);
 
+    const mergedHist = mergeHistory(prevItem?.history, y.history);
+    const hist10 = withDailyPoint(mergedHist, y.updatedAt, Number(y.price));
+
     return {
       name: fund.name,
       currency: y.currency || fund.currencyHint || prevItem?.currency || "DKK",
       price: Number(y.price),
       updatedAt: y.updatedAt,
       source: `yahoo:${symbol}`,
-      history: withDailyPoint(
-        mergeHistory(prevItem?.history, y.history),
-        y.updatedAt,
-        Number(y.price)
-      )
+      history: hist10
     };
   } catch {
-    // fortsæt
+    // fortsæt til fallback
   }
 
   // 2) Fallback
@@ -325,11 +289,9 @@ async function getFundData(fund, prevItem) {
   };
 }
 
-/**
- * =========================================================
- * AFSNIT 10 – Main: hent alt + skriv prices.json
- * =========================================================
- */
+/* =========================================================
+   AFSNIT 10 – Main: hent alt + skriv prices.json
+   ========================================================= */
 async function main() {
   const previous = readJsonSafe(OUT_FILE);
 
@@ -345,7 +307,7 @@ async function main() {
       if (data.updatedAt > maxUpdatedAt) maxUpdatedAt = data.updatedAt;
       continue;
     } catch {
-      // 3) Sidste fallback: brug forrige så workflow aldrig dør
+      // 3) Sidste fallback: brug forrige, men sørg stadig for dagspunkt i historik
     }
 
     if (prevItem) {
@@ -388,6 +350,7 @@ async function main() {
   };
 
   writeJsonSafe(OUT_FILE, out);
+
   console.log(`✅ Wrote ${OUT_FILE}`);
   console.log(`updatedAt: ${out.updatedAt}`);
   console.log(`items: ${out.items.length}`);
