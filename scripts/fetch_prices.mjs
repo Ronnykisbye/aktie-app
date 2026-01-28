@@ -370,4 +370,5 @@ async function main() {
         source: "previous",
         history: withDailyPoint(
           prevItem.history || [],
-          prevItem.updatedAt || previous.updated
+          prevItem.updatedAt || previous.updatedAt
+
