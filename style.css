@@ -1,7 +1,17 @@
 /* =========================================================
    style.css
    Kun relevante styles til totals + tabel (bevarer dit look)
+
+   VIGTIGT (robust fallback):
+   - Hvis nogen (ved en fejl) kun loader style.css i index.html,
+     så loader style.css stadig theme + komponenter automatisk.
    ========================================================= */
+
+/* =========================
+   AFSNIT 00 – Imports (FALLBACK)
+   ========================= */
+@import url("./colors.css");
+@import url("./components.css");
 
 /* =========================
    AFSNIT 01 – Layout
@@ -18,7 +28,9 @@
 }
 
 /* ===========================================
-   OVERRIDE – KNAPPER (SIDSTE ORD)
+   AFSNIT 02 – KNAP-OVERRIDE (sidste ord)
+   (Denne blok er OK og må gerne blive – men nu virker den,
+   fordi colors/components bliver loadet korrekt)
    =========================================== */
 
 /* Primær knap */
@@ -46,7 +58,6 @@ html[data-theme="light"] button.ghost {
   color: #0b6fa8 !important;
   border: 1px solid rgba(11,111,168,0.30);
 }
-
 
 /* =========================
    AFSNIT 03 – Tabel wrapper
