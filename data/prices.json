@@ -8,7 +8,21 @@
       "currency": "EUR",
       "price": 111.92,
       "updatedAt": "2026-01-29T11:38:42.854Z",
-      "source": "manual",
+      "source": "previous",
+      "debug": {
+        "attempts": [
+          {
+            "ok": false,
+            "symbol": "LU3076185084:EUR",
+            "error": "Yahoo HTTP 401 for LU3076185084:EUR"
+          },
+          {
+            "ok": false,
+            "symbol": "LU3076185670:EUR",
+            "error": "Yahoo HTTP 401 for LU3076185670:EUR"
+          }
+        ]
+      },
       "history": [
         {
           "date": "2026-01-29",
@@ -22,7 +36,21 @@
       "currency": "DKK",
       "price": 146.22,
       "updatedAt": "2026-01-29T11:38:42.854Z",
-      "source": "manual",
+      "source": "previous",
+      "debug": {
+        "attempts": [
+          {
+            "ok": false,
+            "symbol": "DK0060949964",
+            "error": "Yahoo HTTP 401 for DK0060949964"
+          },
+          {
+            "ok": false,
+            "symbol": "DK0060949964.CO",
+            "error": "Yahoo HTTP 401 for DK0060949964.CO"
+          }
+        ]
+      },
       "history": [
         {
           "date": "2026-01-29",
@@ -36,7 +64,26 @@
       "currency": "DKK",
       "price": 209.53,
       "updatedAt": "2026-01-29T11:38:42.854Z",
-      "source": "manual",
+      "source": "previous",
+      "debug": {
+        "attempts": [
+          {
+            "ok": false,
+            "symbol": "DK0060949881",
+            "error": "Yahoo HTTP 401 for DK0060949881"
+          },
+          {
+            "ok": false,
+            "symbol": "DK0060949881.CO",
+            "error": "Yahoo HTTP 401 for DK0060949881.CO"
+          },
+          {
+            "ok": false,
+            "symbol": "FI4000261300:EUR",
+            "error": "Yahoo HTTP 401 for FI4000261300:EUR"
+          }
+        ]
+      },
       "history": [
         {
           "date": "2026-01-29",
