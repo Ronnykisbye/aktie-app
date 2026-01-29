@@ -6,8 +6,8 @@ name: Update prices.json (daily)
 
 on:
   schedule:
-    # Kører hver dag kl. 18:05 UTC (ca. 19:05 DK vinter / 20:05 DK sommer)
-    - cron: "5 18 * * *"
+    # Kører hver dag kl. 19:00 UTC (≈ 20:00 DK om vinteren; DST kan afvige).
+    - cron: "0 19 * * *"
   workflow_dispatch: {}
 
 # =========================================================
@@ -21,45 +21,37 @@ permissions:
 # AFSNIT 03 – Job
 # =========================================================
 jobs:
-  update-prices:
+  update:
     runs-on: ubuntu-latest
 
     steps:
-      # ---------------------------------------------------------
-      # AFSNIT 04 – Checkout
-      # ---------------------------------------------------------
-      - name: Checkout
+      # =========================================================
+      # AFSNIT 03A – Checkout
+      # =========================================================
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ---------------------------------------------------------
-      # AFSNIT 05 – Node.js
-      # ---------------------------------------------------------
+      # =========================================================
+      # AFSNIT 03B – Node
+      # =========================================================
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # ---------------------------------------------------------
-      # AFSNIT 06 – Run fetch script
-      # - Skriver data/prices.json
-      # ---------------------------------------------------------
-      - name: Fetch latest prices
+      # =========================================================
+      # AFSNIT 03C – Kør script
+      # =========================================================
+      - name: Fetch prices and update JSON
         run: node scripts/fetch_prices.mjs
 
-      # ---------------------------------------------------------
-      # AFSNIT 07 – Commit only if changed
-      # ---------------------------------------------------------
-      - name: Commit and push if changed
+      # =========================================================
+      # AFSNIT 03D – Commit + push (kun hvis der er ændringer)
+      # =========================================================
+      - name: Commit and push changes
         run: |
-          git status --porcelain
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add data/prices.json
-          git commit -m "chore: update prices.json (auto)"
+          git diff --cached --quiet && echo "No changes" || git commit -m "Update prices.json"
           git push
