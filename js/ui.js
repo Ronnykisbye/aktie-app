@@ -1,144 +1,83 @@
 /* =========================================================
-   AFSNIT 01 – Format helpers
+   ui.js
+   UI rendering (tabel + 2 store “knapper” til totals)
    ========================================================= */
-function fmtDKK(n) {
-  const x = Number(n) || 0;
-  return x.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DKK";
+
+/* =========================================================
+   AFSNIT 01 – Helpers
+   ========================================================= */
+function parseISO(s) {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function fmtPct(n) {
-  const x = Number(n) || 0;
-  const sign = x > 0 ? "+" : "";
-  return sign + x.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
+function formatNumberDKK(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  return x.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function toDKK(price, currency, eurDkk) {
-  const p = Number(price);
-  if (!Number.isFinite(p)) return 0;
-  const c = String(currency || "DKK").toUpperCase();
-  if (c === "DKK") return p;
-  if (c === "EUR") return p * Number(eurDkk || 0);
-  return p;
-}
-
-function toLocalDateTime(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat("da-DK", {
+function formatDateTimeLocal(iso) {
+  const d = parseISO(iso);
+  if (!d) return "—";
+  return d.toLocaleString("da-DK", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit"
-  }).format(d);
+  });
 }
 
-function daysSince(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const now = new Date();
-  const ms = now.getTime() - d.getTime();
-  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+function isSameLocalDate(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function diffDaysLocal(a, b) {
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  const ms = db - da;
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function clearEl(el) {
+  if (!el) return;
+  el.innerHTML = "";
 }
 
 /* =========================================================
-   AFSNIT 02 – UI: render
+   AFSNIT 02 – Skeleton (bygger layout)
    ========================================================= */
-export function renderPortfolio({
-  container,
-  statusTextEl,
-  lastUpdatedEl,
-  holdings,
-  eurDkk,
-  purchaseDateISO
-}) {
-  if (!container) return;
-
-  const items = Array.isArray(holdings?.items) ? holdings.items : [];
-
-  // find “seneste updatedAt” i datasættet
-  let maxUpdatedAt = holdings?.updatedAt || null;
-  for (const it of items) {
-    if (it?.updatedAt && (!maxUpdatedAt || it.updatedAt > maxUpdatedAt)) {
-      maxUpdatedAt = it.updatedAt;
-    }
-  }
-
-  // beregninger
-  let totalValue = 0;
-  let totalProfit = 0;
-
-  const rows = items.map((it) => {
-    const name = it?.name || "Ukendt";
-    const currency = (it?.currency || "DKK").toUpperCase();
-
-    const qty = Number(it?.quantity ?? it?.Antal ?? 0) || 0;
-
-    const current = Number(it?.price ?? it?.Kurs ?? 0) || 0;
-    const buy = Number(it?.buyPrice ?? it?.KøbsKurs ?? 0) || 0;
-
-    const currentDKK = toDKK(current, currency, eurDkk);
-    const buyDKK = toDKK(buy, currency, eurDkk);
-
-    const valueDKK = qty * currentDKK;
-    const profitDKK = qty * (currentDKK - buyDKK);
-
-    totalValue += valueDKK;
-    totalProfit += profitDKK;
-
-    const investedDKK = qty * buyDKK;
-    const pct = investedDKK > 0 ? (profitDKK / investedDKK) * 100 : 0;
-
-    return {
-      name,
-      pct,
-      profitDKK,
-      currentText:
-        currency === "EUR"
-          ? (Number(current).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " EUR")
-          : (Number(current).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DKK"),
-      qty,
-      currentDKK
-    };
-  });
-
-  // statuslinje
-  const dSince = daysSince(maxUpdatedAt);
-  const checkedAtText = ""; // main.js tilføjer “Senest tjekket …” bagefter
-  const staleText =
-    dSince === null ? "OK – data vist." :
-    dSince === 0 ? "OK – data vist. Nye kurser i dag." :
-    `OK – data vist. Ingen nye kurser i dag endnu (${dSince} dag gammel).`;
-
-  if (statusTextEl) {
-    statusTextEl.textContent = `${staleText}${checkedAtText}`;
-  }
-
-  if (lastUpdatedEl) {
-    const lu = toLocalDateTime(maxUpdatedAt);
-    lastUpdatedEl.textContent = `Seneste handelsdag: ${lu || "—"}`;
-  }
-
-  // render HTML (bokse + tabel)
-  const profitClass = totalProfit >= 0 ? "pos" : "neg";
-
+function buildSkeleton(container) {
   container.innerHTML = `
-    <div class="summaryRow">
-      <div class="summaryCard">
-        <div class="summaryLabel">Samlet porteføljeværdi:</div>
-        <div class="summaryValue">${fmtDKK(totalValue)}</div>
-      </div>
+    <div class="stats">
+      <button class="stat-btn" id="totalValueBtn" type="button">
+        <div class="stat-title">Samlet porteføljeværdi</div>
+        <div class="stat-value" id="totalValue">—</div>
+      </button>
 
-      <div class="summaryCard">
-        <div class="summaryLabel">Samlet gevinst/tab siden ${String(purchaseDateISO || "").slice(0,10) || "start"}:</div>
-        <div class="summaryValue ${profitClass}">${fmtDKK(totalProfit)}</div>
-      </div>
+      <button class="stat-btn stat-accent" id="totalProfitBtn" type="button">
+        <div class="stat-title">Samlet gevinst/tab siden 10.09.2025</div>
+        <div class="stat-value" id="totalProfit">—</div>
+      </button>
     </div>
 
-    <div class="tableWrap">
-      <table class="portfolioTable">
+    <div class="table-wrap">
+      <table class="table">
         <thead>
           <tr>
             <th>Navn</th>
@@ -149,19 +88,92 @@ export function renderPortfolio({
             <th>Kurs (DKK)</th>
           </tr>
         </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td>${r.name}</td>
-              <td class="${r.pct >= 0 ? "pos" : "neg"}">${fmtPct(r.pct)}</td>
-              <td class="${r.profitDKK >= 0 ? "pos" : "neg"}">${fmtDKK(r.profitDKK)}</td>
-              <td>${r.currentText}</td>
-              <td>${Number(r.qty).toLocaleString("da-DK")}</td>
-              <td>${fmtDKK(r.currentDKK)}</td>
-            </tr>
-          `).join("")}
-        </tbody>
+        <tbody id="rows"></tbody>
       </table>
     </div>
   `;
+}
+
+/* =========================================================
+   AFSNIT 03 – Render
+   ========================================================= */
+export function renderPortfolio({
+  container,
+  statusTextEl,
+  lastUpdatedEl,
+  holdings,
+  eurDkk,
+  purchaseDateISO
+}) {
+  clearEl(container);
+
+  const updatedAt = holdings?.updatedAt || holdings?.updatedAtISO || null;
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+
+  buildSkeleton(container);
+
+  const updatedDate = parseISO(updatedAt);
+  const now = new Date();
+
+  // Linjen med “Seneste handelsdag”
+  if (lastUpdatedEl) {
+    lastUpdatedEl.textContent =
+      "Seneste handelsdag: " +
+      formatDateTimeLocal(updatedAt) +
+      (holdings?.source ? " • Opdateret af: " + holdings.source : "");
+  }
+
+  // Status (OK / hvor gammel)
+  if (statusTextEl) {
+    if (updatedDate && !isSameLocalDate(updatedDate, now)) {
+      const days = diffDaysLocal(updatedDate, now);
+      statusTextEl.textContent =
+        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel).`;
+    } else {
+      statusTextEl.textContent = "OK – data vist. Nye kurser i dag.";
+    }
+  }
+
+  // Find elementer til totals
+  const elTotalValue = container.querySelector("#totalValue");
+  const elTotalProfit = container.querySelector("#totalProfit");
+  const rowsEl = container.querySelector("#rows");
+
+  // Beregninger
+  // NOTE: main.js sender allerede rækker med udregnede felter.
+  // Her summerer vi bare på de felter, der ligger i list.
+  let totalValue = 0;
+  let totalProfit = 0;
+
+  // Render rækker
+  for (const it of list) {
+    const name = escapeHtml(it.name);
+    const pct = it.gainPctText ?? "—";
+    const gainDkk = it.gainDkk ?? null;
+    const gainDkkText = it.gainDkkText ?? "—";
+
+    const price = it.price ?? null;
+    const cur = it.currency ?? "";
+    const count = it.count ?? it.quantity ?? it.amount ?? null;
+
+    const priceDkk = it.priceDkk ?? null;
+
+    // Summer
+    if (Number.isFinite(it.valueDkk)) totalValue += it.valueDkk;
+    if (Number.isFinite(gainDkk)) totalProfit += gainDkk;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${name}</td>
+      <td class="pos">${escapeHtml(pct)}</td>
+      <td class="pos">${escapeHtml(gainDkkText)}</td>
+      <td>${escapeHtml(price ?? "—")} ${escapeHtml(cur)}</td>
+      <td>${escapeHtml(count ?? "—")}</td>
+      <td>${escapeHtml(priceDkk ?? "—")} DKK</td>
+    `;
+    rowsEl.appendChild(tr);
+  }
+
+  if (elTotalValue) elTotalValue.textContent = `${formatNumberDKK(totalValue)} DKK`;
+  if (elTotalProfit) elTotalProfit.textContent = `${formatNumberDKK(totalProfit)} DKK`;
 }
