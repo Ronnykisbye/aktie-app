@@ -1,149 +1,300 @@
-// =========================================================
-// AFSNIT 01 – IMPORTS
-// =========================================================
-import fs from "fs";
+/* =========================================================
+   scripts/fetch_prices.mjs
+   Henter seneste kurser (multi-source via Yahoo symbols)
+   Gemmer 10 seneste punkter pr fond i data/prices.json
+   Node 20+ (GitHub Actions)
+   ========================================================= */
+
+/* =========================
+   AFSNIT 01 – Imports
+   ========================= */
+import fs from "fs/promises";
 import path from "path";
 
-// =========================================================
-// AFSNIT 02 – HJÆLPEFUNKTIONER
-// =========================================================
+/* =========================
+   AFSNIT 02 – Paths
+   ========================= */
+const ROOT = process.cwd();
+const DATA_DIR = path.join(ROOT, "data");
+const PRICES_PATH = path.join(DATA_DIR, "prices.json");
+
+/* =========================
+   AFSNIT 03 – Helpers (dato/tid)
+   ========================= */
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
 function nowIsoUtc() {
   return new Date().toISOString();
 }
 
-function yyyyMmDdFromDate(date) {
-  return date.toISOString().split("T")[0];
+// Dagsdato i DK (lokal dato), så “10 seneste” bliver pr dag
+function dkDateYYYYMMDD(date = new Date()) {
+  const dk = new Date(
+    date.toLocaleString("en-US", { timeZone: "Europe/Copenhagen" })
+  );
+  const y = dk.getFullYear();
+  const m = pad2(dk.getMonth() + 1);
+  const d = pad2(dk.getDate());
+  return `${y}-${m}-${d}`;
 }
 
-function withDailyPoint(history = [], date, price) {
-  const clean = Array.isArray(history) ? history : [];
+function asNumber(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
 
-  // Undgå dublet samme dag
-  if (clean.length && clean[clean.length - 1].date === date) {
-    return clean;
+function uniqByDateKeepLast(arr) {
+  // hvis samme dato findes flere gange, behold den sidste
+  const map = new Map();
+  for (const p of arr || []) {
+    if (!p?.date) continue;
+    map.set(p.date, p);
   }
-
-  // Kun 10 seneste punkter
-  return [
-    ...clean,
-    { date, price }
-  ].slice(-10);
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// =========================================================
-// AFSNIT 03 – STIER (VIGTIGT)
-// Gem til /data/prices.json + en failsafe kopi i roden
-// =========================================================
-const ROOT = process.cwd();
-const DATA_DIR = path.join(ROOT, "data");
-const DATA_FILE = path.join(DATA_DIR, "prices.json");
-const ROOT_FALLBACK_FILE = path.join(ROOT, "prices.json");
-
-// Sikr at /data findes
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function keepLastN(arr, n = 10) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(Math.max(0, arr.length - n));
 }
 
-// =========================================================
-// AFSNIT 04 – LÆS EKSISTERENDE DATA
-// (Prøver først /data/prices.json, ellers roden)
-// =========================================================
-let previous = { updatedAt: null, items: [] };
+/* =========================
+   AFSNIT 04 – Load/Save JSON
+   ========================= */
+async function ensureDir(dir) {
+  await fs.mkdir(dir, { recursive: true });
+}
 
-function tryReadJson(filePath) {
-  if (!fs.existsSync(filePath)) return null;
+async function readJsonSafe(filePath, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const txt = await fs.readFile(filePath, "utf-8");
+    return JSON.parse(txt);
   } catch {
-    return null;
+    return fallback;
   }
 }
 
-const prevFromData = tryReadJson(DATA_FILE);
-const prevFromRoot = tryReadJson(ROOT_FALLBACK_FILE);
-previous = prevFromData || prevFromRoot || previous;
+async function writeJsonPretty(filePath, obj) {
+  await ensureDir(path.dirname(filePath));
+  const txt = JSON.stringify(obj, null, 2) + "\n";
+  await fs.writeFile(filePath, txt, "utf-8");
+}
 
-// =========================================================
-// AFSNIT 05 – DINE FONDE (MANUELLE PRISER LIGE NU)
-// Næste step bliver at hente automatisk (flere kilder),
-// men først får vi workflow helt stabilt igen.
-// =========================================================
+/* =========================
+   AFSNIT 05 – Yahoo fetch (quote)
+   ========================= */
+// Yahoo endpoint uden API key
+// https://query1.finance.yahoo.com/v7/finance/quote?symbols=SYMBOL
+async function fetchYahooQuote(symbol) {
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+    symbol
+  )}`;
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; Aktie-App/1.0)"
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error(`Yahoo HTTP ${res.status} for ${symbol}`);
+  }
+
+  const data = await res.json();
+  const result = data?.quoteResponse?.result?.[0];
+  if (!result) {
+    throw new Error(`Yahoo: no result for ${symbol}`);
+  }
+
+  const price = asNumber(result.regularMarketPrice ?? result.postMarketPrice);
+  const currency = result.currency || null;
+
+  // regularMarketTime er epoch-sekunder
+  const marketTimeSec = asNumber(result.regularMarketTime);
+  const marketTimeISO =
+    marketTimeSec ? new Date(marketTimeSec * 1000).toISOString() : null;
+
+  if (!price) {
+    throw new Error(`Yahoo: missing price for ${symbol}`);
+  }
+
+  return {
+    symbol,
+    price,
+    currency,
+    marketTimeISO
+  };
+}
+
+/* =========================
+   AFSNIT 06 – Fund definitions
+   ========================= */
+/**
+ * VIGTIGT:
+ * - Jeg bruger flere Yahoo-symboler pr fond som fallback.
+ * - Hvis et symbol ikke findes, prøver den næste automatisk.
+ *
+ * Hvis du vil ændre/tilføje symboler:
+ * - Find symbolet på Yahoo Finance og indsæt her.
+ */
 const FUNDS = [
   {
     name: "Nordea Empower Europe Fund BQ",
     isin: "LU3076185670",
     currency: "EUR",
-    price: 111.92
+    yahooSymbols: [
+      // du har vist disse i dine screenshots
+      "LU3076185084:EUR",
+      "LU3076185670:EUR"
+    ]
   },
   {
     name: "Nordea Invest Europe Enhanced KL 1",
     isin: "DK0060949964",
     currency: "DKK",
-    price: 146.22
+    yahooSymbols: [
+      // typiske varianter – vi prøver flere:
+      "DK0060949964",
+      "DK0060949964.CO",
+      "0P0000XXXX.F" // placeholder (ignoreres hvis Yahoo ikke kender den)
+    ]
   },
   {
     name: "Nordea Invest Global Enhanced KL 1",
     isin: "DK0060949881",
     currency: "DKK",
-    price: 209.53
+    yahooSymbols: [
+      "DK0060949881",
+      "DK0060949881.CO",
+      "FI4000261300:EUR" // fallback (hvis DKK ikke findes, får vi i det mindste en reference)
+    ]
   }
 ];
 
-// =========================================================
-// AFSNIT 06 – OPBYG NY PRICES.JSON (MED 10 HISTORIKPUNKTER)
-// =========================================================
-const today = new Date();
-const todayIso = yyyyMmDdFromDate(today);
-const nowIso = nowIsoUtc();
+/* =========================
+   AFSNIT 07 – Resolve latest price per fund
+   ========================= */
+async function resolveFundPrice(fund) {
+  const attempts = [];
 
-const items = [];
-let maxUpdatedAt = previous.updatedAt || null;
+  for (const sym of fund.yahooSymbols || []) {
+    // Ignorer tydelige placeholders
+    if (!sym || sym.includes("XXXX")) continue;
 
-function findPrev(isin) {
-  return previous.items?.find(i => i.isin === isin) || null;
+    try {
+      const q = await fetchYahooQuote(sym);
+      attempts.push({ ok: true, ...q });
+      // Vi accepterer første succes
+      return {
+        ok: true,
+        source: "yahoo",
+        symbol: q.symbol,
+        price: q.price,
+        currency: q.currency || fund.currency,
+        marketTimeISO: q.marketTimeISO,
+        attempts
+      };
+    } catch (e) {
+      attempts.push({ ok: false, symbol: sym, error: String(e?.message || e) });
+    }
+  }
+
+  return {
+    ok: false,
+    source: "yahoo",
+    symbol: null,
+    price: null,
+    currency: fund.currency,
+    marketTimeISO: null,
+    attempts
+  };
 }
 
-for (const fund of FUNDS) {
-  const prevItem = findPrev(fund.isin);
+/* =========================
+   AFSNIT 08 – History update (10 seneste)
+   ========================= */
+function updateHistory(prevHistory, dateYYYYMMDD, price) {
+  const base = Array.isArray(prevHistory) ? prevHistory : [];
+  const next = uniqByDateKeepLast([
+    ...base,
+    { date: dateYYYYMMDD, price: Number(price) }
+  ]);
+  return keepLastN(next, 10);
+}
 
-  // Brug nuværende tidspunkt som updatedAt (vi henter jo “nu”)
-  const updatedAt = nowIso;
-
-  const history = withDailyPoint(
-    prevItem?.history || [],
-    todayIso,
-    Number(fund.price)
-  );
-
-  items.push({
-    name: fund.name,
-    isin: fund.isin,
-    currency: fund.currency,
-    price: Number(fund.price),
-    updatedAt,
-    source: "manual",
-    history
+/* =========================
+   AFSNIT 09 – Main
+   ========================= */
+async function main() {
+  const prev = await readJsonSafe(PRICES_PATH, {
+    updatedAt: null,
+    source: null,
+    items: []
   });
 
-  if (!maxUpdatedAt || updatedAt > maxUpdatedAt) {
-    maxUpdatedAt = updatedAt;
+  const prevItems = Array.isArray(prev?.items) ? prev.items : [];
+  const prevByIsin = new Map(
+    prevItems
+      .filter((x) => x?.isin)
+      .map((x) => [x.isin, x])
+  );
+
+  const today = dkDateYYYYMMDD(new Date());
+
+  const results = [];
+  let maxMarketTimeISO = null;
+
+  for (const fund of FUNDS) {
+    const resolved = await resolveFundPrice(fund);
+
+    const prevItem = prevByIsin.get(fund.isin) || null;
+    const fallbackPrice = asNumber(prevItem?.price);
+
+    // Hvis Yahoo fejler, behold sidste kendte pris (så appen ikke går i stykker)
+    const finalPrice = resolved.ok ? resolved.price : fallbackPrice;
+
+    // Opdater max “seneste handelsdag”
+    const mt = resolved.marketTimeISO || prevItem?.updatedAt || null;
+    if (mt && (!maxMarketTimeISO || mt > maxMarketTimeISO)) {
+      maxMarketTimeISO = mt;
+    }
+
+    const nextHistory = updateHistory(prevItem?.history, today, finalPrice);
+
+    results.push({
+      name: fund.name,
+      isin: fund.isin,
+      currency: fund.currency,
+      price: finalPrice,
+      // gem “seneste markeds-tid” pr fond hvis vi har den
+      updatedAt: mt || nowIsoUtc(),
+      source: resolved.ok ? `yahoo:${resolved.symbol}` : "previous",
+      // debug (kan fjernes senere) – men mega nyttigt til kvalitetssikring
+      debug: {
+        attempts: resolved.attempts
+      },
+      history: nextHistory
+    });
+  }
+
+  const out = {
+    updatedAt: maxMarketTimeISO || nowIsoUtc(),
+    source: "github-action",
+    items: results
+  };
+
+  await writeJsonPretty(PRICES_PATH, out);
+
+  console.log("✅ Wrote", PRICES_PATH);
+  console.log("updatedAt:", out.updatedAt);
+  for (const it of out.items) {
+    console.log("-", it.name, it.price, it.currency, it.source);
   }
 }
 
-// =========================================================
-// AFSNIT 07 – GEM FIL
-// =========================================================
-const output = {
-  updatedAt: maxUpdatedAt,
-  source: "github-action",
-  items
-};
-
-// Gem til /data/prices.json (primær)
-fs.writeFileSync(DATA_FILE, JSON.stringify(output, null, 2));
-
-// Gem også en kopi i roden (failsafe)
-fs.writeFileSync(ROOT_FALLBACK_FILE, JSON.stringify(output, null, 2));
-
-console.log("✅ prices.json opdateret korrekt:", DATA_FILE);
-console.log("✅ fallback copy:", ROOT_FALLBACK_FILE);
+main().catch((e) => {
+  console.error("❌ fetch_prices.mjs failed:", e);
+  process.exit(1);
+});
