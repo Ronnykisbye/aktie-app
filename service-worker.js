@@ -1,68 +1,60 @@
 /* =========================================================
    AFSNIT 01 – Konstanter
-   ========================================================= */
-const CACHE_NAME = "aktie-app-v1";
+========================================================= */
+const CACHE_NAME = "aktie-app-static-v2";
+
+const STATIC_FILES = [
+  "/",
+  "/index.html",
+  "/style.css",
+  "/main.js",
+  "/ui.js",
+  "/manifest.json"
+];
 
 /* =========================================================
-   AFSNIT 02 – Install / Activate
-   ========================================================= */
+   AFSNIT 02 – Install
+========================================================= */
 self.addEventListener("install", (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_FILES))
+  );
 });
 
+/* =========================================================
+   AFSNIT 03 – Activate
+========================================================= */
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.map(k => k !== CACHE_NAME && caches.delete(k))
+      )
+    )
+  );
+  self.clients.claim();
 });
 
 /* =========================================================
-   AFSNIT 03 – Helpers: Kun cache http/https
-   ========================================================= */
-function isCacheableRequest(request) {
-  try {
-    const url = new URL(request.url);
-
-    // Cache API understøtter kun http/https – alt andet skal ignoreres
-    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-
-    // Kun GET giver mening at cache
-    if (request.method !== "GET") return false;
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* =========================================================
-   AFSNIT 04 – Fetch: cache-first for egne assets, network fallback
-   (men IGNORER chrome-extension:// osv.)
-   ========================================================= */
+   AFSNIT 04 – Fetch
+   ⚠️ VIGTIGT:
+   – HTML/CSS/JS = cache
+   – JSON/prices = ALTID NETVÆRK
+========================================================= */
 self.addEventListener("fetch", (event) => {
-  const req = event.request;
+  const url = new URL(event.request.url);
 
-  // Vigtigt: hvis det ikke er cachebart, så lad browseren håndtere det normalt
-  if (!isCacheableRequest(req)) return;
+  // 🔥 ALDRIG cache priser
+  if (url.pathname.includes("prices")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
+  // Standard cache-first for resten
   event.respondWith(
-    (async () => {
-      const cache = await caches.open(CACHE_NAME);
-
-      const cached = await cache.match(req);
-      if (cached) return cached;
-
-      const fresh = await fetch(req);
-
-      // Kun cache OK-svar
-      if (fresh && fresh.ok) {
-        try {
-          await cache.put(req, fresh.clone());
-        } catch (e) {
-          // ekstra sikkerhed: ingen crash pga cache.put
-          console.warn("Cache put fejlede:", e);
-        }
-      }
-
-      return fresh;
-    })()
+    caches.match(event.request).then(cached => {
+      return cached || fetch(event.request);
+    })
   );
 });
