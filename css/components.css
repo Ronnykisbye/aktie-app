@@ -147,7 +147,6 @@ AFSNIT 06 - 3D Card-styling (selve boksene)
   background: var(--card);
   border: 1px solid var(--border);
 
-  /* Tydelig 3D / dybde i både dark & light */
   box-shadow:
     0 14px 28px rgba(0,0,0,0.16),
     0 2px 0 rgba(255,255,255,0.06) inset,
@@ -155,7 +154,6 @@ AFSNIT 06 - 3D Card-styling (selve boksene)
 
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 
-  /* Layout i boksen */
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -163,7 +161,6 @@ AFSNIT 06 - 3D Card-styling (selve boksene)
   text-align:center;
   gap:10px;
 
-  /* Typografi */
   font-size: 1.05rem;
   font-weight: 800;
   line-height: 1.25;
@@ -190,7 +187,6 @@ AFSNIT 07 - “Tal-knap” (span.value) = ekstra tydeligt
   padding:10px 14px;
   border-radius:999px;
 
-  /* Neutral 3D pill */
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.12);
 
@@ -206,7 +202,6 @@ AFSNIT 07 - “Tal-knap” (span.value) = ekstra tydeligt
 
 /*
 AFSNIT 08 - Farve/kontrast for gevinst vs tab
-- Vi farver “tal-knappen” tydeligt grøn/rød
 */
 .totals h3.pos .value{
   background: rgba(0, 200, 100, 0.16);
@@ -237,6 +232,13 @@ AFSNIT 09 - Små skærme: lidt mindre “tal-knap”
   }
   .totals h3 .value{
     font-size:1.2rem;
-    padding:9px 12px;
+    padding:8px 12px;
   }
+}
+
+/*
+AFSNIT 10 – Farvefix: Samlet porteføljeværdi (beløb) skal være sort
+*/
+#totalValue{
+  color:#000;
 }
