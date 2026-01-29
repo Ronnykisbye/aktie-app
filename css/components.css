@@ -8,9 +8,6 @@ h1{
   letter-spacing:.3px;
 }
 
-/*
-AFSNIT 01B - Topbar
-*/
 .topbar{
   display:flex;
   align-items:flex-start;
@@ -26,9 +23,6 @@ AFSNIT 01B - Topbar
   color:var(--muted);
 }
 
-/*
-AFSNIT 01C - Statuslinje (gør den pæn i både dark/light)
-*/
 .status{
   margin-top:6px;
   color:var(--muted);
@@ -38,12 +32,11 @@ AFSNIT 01C - Statuslinje (gør den pæn i både dark/light)
   justify-content:center;
   flex-wrap:wrap;
 }
-
 .statusSep{ opacity:.55; }
 
-/*
-AFSNIT 02 - Knapper
-*/
+/* =========================================================
+   AFSNIT 02 - Knapper (FIX: bedre baggrund i light/dark)
+   ========================================================= */
 .actions{
   display:flex;
   gap:12px;
@@ -52,6 +45,7 @@ AFSNIT 02 - Knapper
   flex-wrap:wrap;
 }
 
+/* Primærknap (Opdater) – altid tydelig blå */
 button{
   background:var(--brand);
   color:var(--btnText);
@@ -66,34 +60,35 @@ button{
 button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
 button:active{ transform:translateY(1px); }
 
+/* Ghost-knapper (PDF/Graf) – “blåtonet” i begge temaer */
 button.ghost{
-  background:transparent;
-  color:var(--muted);
-  border:1px solid var(--border);
   box-shadow:none;
+  font-weight:700;
 }
-button.ghost:hover{ color:var(--txt); }
 
-/*
-AFSNIT 02B - Icon knap (tema)
-*/
-.icon-btn{
-  width:44px;
-  height:44px;
-  border-radius:12px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--card);
-  color:var(--txt);
-  border:1px solid var(--border);
-  box-shadow:0 6px 16px rgba(0,0,0,0.12);
+/* Dark: blåtonet ghost */
+html[data-theme="dark"] button.ghost{
+  background: rgba(0,191,255,0.12);
+  border:1px solid rgba(0,191,255,0.30);
+  color: #cfe8ff;
 }
-.icon-btn:hover{ filter:brightness(1.05); }
+html[data-theme="dark"] button.ghost:hover{
+  filter:brightness(1.08);
+}
 
-/*
-AFSNIT 02C - Visuel feedback (blink) ved opdatering
-*/
+/* Light: rolig blå ghost */
+html[data-theme="light"] button.ghost{
+  background: rgba(0,119,182,0.08);
+  border:1px solid rgba(0,119,182,0.22);
+  color: var(--txt);
+}
+html[data-theme="light"] button.ghost:hover{
+  filter:brightness(1.03);
+}
+
+/* =========================================================
+   AFSNIT 02C - Blink (visuel feedback)
+   ========================================================= */
 .flash{
   animation: flashPulse 380ms ease-out;
 }
@@ -103,9 +98,9 @@ AFSNIT 02C - Visuel feedback (blink) ved opdatering
   100% { filter:brightness(1); }
 }
 
-/*
-AFSNIT 02D - Graf-panel + controls (professionelt look)
-*/
+/* =========================================================
+   AFSNIT 02D - Graf-panel + controls
+   ========================================================= */
 .graphPanel{
   width: min(1100px, 96vw);
   margin: 18px auto 0;
@@ -171,9 +166,9 @@ AFSNIT 02D - Graf-panel + controls (professionelt look)
   background: transparent;
 }
 
-/*
-AFSNIT 03 - Table
-*/
+/* =========================================================
+   AFSNIT 03 - Table
+   ========================================================= */
 table{
   width:100%;
   border-collapse:collapse;
@@ -204,9 +199,6 @@ td.left{ text-align:left; }
 .neg{ color:var(--red); font-weight:800; }
 .neu{ color:var(--muted); font-weight:800; }
 
-/*
-AFSNIT 04 - Mobil (tabelkolonner)
-*/
 @media (max-width:720px){
   .topbar{ align-items:flex-start; }
   .topbar h1{ font-size:1.25rem; }
@@ -215,9 +207,9 @@ AFSNIT 04 - Mobil (tabelkolonner)
   thead th:nth-child(6), tbody td:nth-child(6){ display:none; }
 }
 
-/*
-AFSNIT 05 - Totals (2 tydelige 3D bokse)
-*/
+/* =========================================================
+   AFSNIT 05 - Totals
+   ========================================================= */
 .totals{
   display:grid;
   grid-template-columns: repeat(2, minmax(280px, 1fr));
