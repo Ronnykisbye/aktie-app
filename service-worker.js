@@ -1,60 +1,50 @@
-/* =========================================================
-   AFSNIT 01 – Konstanter
-========================================================= */
-const CACHE_NAME = "aktie-app-static-v2";
+const CACHE_NAME = "aktie-app-v2";
 
-const STATIC_FILES = [
-  "/",
-  "/index.html",
-  "/style.css",
-  "/main.js",
-  "/ui.js",
-  "/manifest.json"
+// Kun statiske filer må caches
+const STATIC_ASSETS = [
+  "/aktie-app/",
+  "/aktie-app/index.html",
+  "/aktie-app/style.css",
+  "/aktie-app/main.js",
+  "/aktie-app/ui.js",
+  "/aktie-app/colors.css",
+  "/aktie-app/layout.css",
+  "/aktie-app/components.css",
+  "/aktie-app/manifest.json",
+  "/aktie-app/icon-192.png"
 ];
 
-/* =========================================================
-   AFSNIT 02 – Install
-========================================================= */
-self.addEventListener("install", (event) => {
+self.addEventListener("install", event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_FILES))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
 });
 
-/* =========================================================
-   AFSNIT 03 – Activate
-========================================================= */
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.map(k => k !== CACHE_NAME && caches.delete(k))
-      )
+      Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-/* =========================================================
-   AFSNIT 04 – Fetch
-   ⚠️ VIGTIGT:
-   – HTML/CSS/JS = cache
-   – JSON/prices = ALTID NETVÆRK
-========================================================= */
-self.addEventListener("fetch", (event) => {
+self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
 
-  // 🔥 ALDRIG cache priser
-  if (url.pathname.includes("prices")) {
+  // ❗ ALDRIG cache data-filer
+  if (
+    url.pathname.includes("prices") ||
+    url.pathname.includes("fonde") ||
+    url.pathname.endsWith(".json")
+  ) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Standard cache-first for resten
+  // Cache kun statiske filer
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then(res => res || fetch(event.request))
   );
 });
