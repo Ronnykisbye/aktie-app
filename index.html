@@ -22,10 +22,10 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- =========================================================
-       AFSNIT 04 – CSS (VIGTIG RÆKKEFØLGE)
-       1) colors  = tema/variabler
-       2) components = knapper/layout/graf/totals
-       3) style   = lokale tweaks (stats/tabel)
+       AFSNIT 04 – CSS (KORREKT RÆKKEFØLGE)
+       1) colors      = tema/variabler
+       2) components  = knapper/layout/graf/totals
+       3) style       = lokale overrides (tabel/stats)
        ========================================================= -->
   <link rel="stylesheet" href="css/colors.css" />
   <link rel="stylesheet" href="css/components.css" />
@@ -105,9 +105,7 @@
 
   <!-- PDF -->
   <script>
-    document.getElementById("pdf")?.addEventListener("click", () => {
-      window.print();
-    });
+    document.getElementById("pdf")?.addEventListener("click", () => window.print());
   </script>
 
   <!-- Service Worker -->
