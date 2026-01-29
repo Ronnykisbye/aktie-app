@@ -2,24 +2,19 @@
 =========================================================
 css/components.css
 MÅL:
-- Knapper: tydeligt blå i mørk mode + pæn blå i lys mode
-- Ghost-knapper: ser “rigtige” ud i begge temaer (ikke udvasket)
-- Bredde: app’en bliver mere samlet/centreret på store skærme
-- Bevarer: tabel/totals/graf-panel + flash animation
+- Knapper: blå og “app-agtige” i både mørk og lys
+- Ghost-knapper (PDF/Graf): får blå baggrund (ikke grå/bleg)
+- Bredde: app’en er samlet/centreret (som nu)
 =========================================================
 */
 
 /* =========================================================
-   AFSNIT 00 – App bredde / centrering (FIX: breden)
+   AFSNIT 00 – App bredde / centrering
    ========================================================= */
 :where(main, .app, .container, #app, .wrap){
   width: min(1200px, 96vw);
   margin-left: auto;
   margin-right: auto;
-}
-
-/* Sørg for at der stadig er luft på siderne på små skærme */
-:where(main, .app, .container, #app, .wrap){
   padding-left: 10px;
   padding-right: 10px;
 }
@@ -71,6 +66,18 @@ h1{
   flex-wrap:wrap;
 }
 
+/* Baseline (gælder alle knapper) */
+button{
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  font-weight:800;
+  cursor:pointer;
+  transition:transform .06s ease, filter .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+button:hover{ transform:translateY(-1px); filter:brightness(1.06); }
+button:active{ transform:translateY(1px); }
+
 /* --- Primærknap (Opdater) --- */
 /* Dark: klar neon-blå */
 html[data-theme="dark"] button{
@@ -88,42 +95,39 @@ html[data-theme="light"] button{
   border: 1px solid rgba(11,111,168,.22);
 }
 
-/* Baseline (gælder begge) */
-button{
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  font-weight:800;
-  cursor:pointer;
-  transition:transform .06s ease, filter .2s ease, background .2s ease, color .2s ease;
-}
-button:hover{ transform:translateY(-1px); filter:brightness(1.05); }
-button:active{ transform:translateY(1px); }
-
-/* --- Ghost-knapper (PDF/Graf) --- */
+/* --- Ghost-knapper (PDF/Graf) ---
+   MÅL: ikke grå/bleg – de skal også være blå i look
+*/
 button.ghost{
   box-shadow:none;
   font-weight:800;
 }
 
-/* Dark: mørk knap med blå kant + blå tekst */
+/* Dark: mørk/blåtonet fyld + blå kant + lys tekst */
 html[data-theme="dark"] button.ghost{
-  background: rgba(0,191,255,0.08);
-  border: 1px solid rgba(0,191,255,0.35);
-  color: #cfe8ff;
+  background: rgba(0,191,255,0.14);          /* <-- mere “blå fyld” */
+  border: 1px solid rgba(0,191,255,0.42);
+  color: #d7f0ff;
 }
 html[data-theme="dark"] button.ghost:hover{
-  background: rgba(0,191,255,0.12);
+  background: rgba(0,191,255,0.20);
 }
 
-/* Light: hvid knap med blå kant + mørk tekst (ser “pro” ud) */
+/* Light: lys blåtonet fyld + blå tekst (ser aktiv ud) */
 html[data-theme="light"] button.ghost{
-  background: #ffffff;
-  border: 1px solid rgba(11,111,168,0.28);
-  color: #0c1722;
+  background: rgba(11,111,168,0.12);         /* <-- blå fyld i light */
+  border: 1px solid rgba(11,111,168,0.30);
+  color: #0b6fa8;                             /* <-- blå tekst */
 }
 html[data-theme="light"] button.ghost:hover{
-  background: rgba(11,111,168,0.06);
+  background: rgba(11,111,168,0.18);
+}
+
+/* Hvis ikonerne i knapperne ser “for lilla/grå” ud på nogle maskiner,
+   så gør vi dem bare en anelse mørkere i light mode */
+html[data-theme="light"] button.ghost img,
+html[data-theme="light"] button.ghost svg{
+  filter: saturate(1.2) contrast(1.1);
 }
 
 /* Tema-toggle knappen (ikon) */
