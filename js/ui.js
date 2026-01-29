@@ -1,47 +1,30 @@
 /* =========================================================
-   AFSNIT 01 – Formatteringshjælpere
+   AFSNIT 01 – Format helpers
    ========================================================= */
-
-export function fmtDKK(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "—";
-  return (
-    new Intl.NumberFormat("da-DK", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(x) + " DKK"
-  );
+function fmtDKK(n) {
+  const x = Number(n) || 0;
+  return x.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DKK";
 }
 
-export function fmtNum(n, digits = 2) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "—";
-  return new Intl.NumberFormat("da-DK", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits
-  }).format(x);
-}
-
-export function fmtPct(n, digits = 2) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "—";
+function fmtPct(n) {
+  const x = Number(n) || 0;
   const sign = x > 0 ? "+" : "";
-  return `${sign}${fmtNum(x, digits)} %`;
+  return sign + x.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
 }
 
-/* =========================================================
-   AFSNIT 02 – Dato/tid (UTC ISO -> lokal DK)
-   ========================================================= */
+function toDKK(price, currency, eurDkk) {
+  const p = Number(price);
+  if (!Number.isFinite(p)) return 0;
+  const c = String(currency || "DKK").toUpperCase();
+  if (c === "DKK") return p;
+  if (c === "EUR") return p * Number(eurDkk || 0);
+  return p;
+}
 
-function parseISO(iso) {
+function toLocalDateTime(iso) {
   if (!iso) return null;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-export function formatDateTimeLocal(iso) {
-  const d = parseISO(iso);
-  if (!d) return "—";
+  if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat("da-DK", {
     year: "numeric",
     month: "2-digit",
@@ -51,109 +34,111 @@ export function formatDateTimeLocal(iso) {
   }).format(d);
 }
 
-function isSameLocalDate(a, b) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function diffDaysLocal(a, b) {
-  // Sammenlign lokale datoer (midnat->midnat)
-  const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  const ms = bb - aa;
-  return Math.round(ms / (1000 * 60 * 60 * 24));
+function daysSince(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const ms = now.getTime() - d.getTime();
+  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
 }
 
 /* =========================================================
-   AFSNIT 03 – Beregninger
+   AFSNIT 02 – UI: render
    ========================================================= */
+export function renderPortfolio({
+  container,
+  statusTextEl,
+  lastUpdatedEl,
+  holdings,
+  eurDkk,
+  purchaseDateISO
+}) {
+  if (!container) return;
 
-function toNumber(v) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
-}
+  const items = Array.isArray(holdings?.items) ? holdings.items : [];
 
-function toDKK(price, currency, eurDkk) {
-  const p = toNumber(price);
-  const c = String(currency || "DKK").toUpperCase();
-  if (c === "DKK") return p;
-  if (c === "EUR") return p * toNumber(eurDkk);
-  return p;
-}
+  // find “seneste updatedAt” i datasættet
+  let maxUpdatedAt = holdings?.updatedAt || null;
+  for (const it of items) {
+    if (it?.updatedAt && (!maxUpdatedAt || it.updatedAt > maxUpdatedAt)) {
+      maxUpdatedAt = it.updatedAt;
+    }
+  }
 
-function computeRow(h, eurDkk) {
-  const qty = toNumber(h.quantity ?? h.Antal);
-  const price = toNumber(h.price ?? h.Kurs);
-  const buyPrice = toNumber(h.buyPrice ?? h.KøbsKurs);
-  const currency = String(h.currency || "DKK").toUpperCase();
+  // beregninger
+  let totalValue = 0;
+  let totalProfit = 0;
 
-  const priceDKK = toDKK(price, currency, eurDkk);
-  const buyDKK = toDKK(buyPrice, currency, eurDkk);
+  const rows = items.map((it) => {
+    const name = it?.name || "Ukendt";
+    const currency = (it?.currency || "DKK").toUpperCase();
 
-  const valueDKK = qty * priceDKK;
-  const costDKK = qty * buyDKK;
-  const profitDKK = valueDKK - costDKK;
-  const profitPct = costDKK > 0 ? (profitDKK / costDKK) * 100 : 0;
+    const qty = Number(it?.quantity ?? it?.Antal ?? 0) || 0;
 
-  return {
-    name: h.name || "Ukendt",
-    currency,
-    qty,
-    price,
-    buyPrice,
-    priceDKK,
-    buyDKK,
-    valueDKK,
-    costDKK,
-    profitDKK,
-    profitPct
-  };
-}
+    const current = Number(it?.price ?? it?.Kurs ?? 0) || 0;
+    const buy = Number(it?.buyPrice ?? it?.KøbsKurs ?? 0) || 0;
 
-/* =========================================================
-   AFSNIT 04 – DOM helpers
-   ========================================================= */
+    const currentDKK = toDKK(current, currency, eurDkk);
+    const buyDKK = toDKK(buy, currency, eurDkk);
 
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+    const valueDKK = qty * currentDKK;
+    const profitDKK = qty * (currentDKK - buyDKK);
 
-function clearEl(el) {
-  if (!el) return;
-  el.innerHTML = "";
-}
+    totalValue += valueDKK;
+    totalProfit += profitDKK;
 
-function renderInfoBox(container, text) {
-  const div = document.createElement("div");
-  div.className = "info";
-  div.textContent = text;
-  container.appendChild(div);
-}
+    const investedDKK = qty * buyDKK;
+    const pct = investedDKK > 0 ? (profitDKK / investedDKK) * 100 : 0;
 
-function buildSkeleton(container) {
-  // Her bygger vi kun den store tabel + totals (ingen “Overblik” tabel)
+    return {
+      name,
+      pct,
+      profitDKK,
+      currentText:
+        currency === "EUR"
+          ? (Number(current).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " EUR")
+          : (Number(current).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DKK"),
+      qty,
+      currentDKK
+    };
+  });
+
+  // statuslinje
+  const dSince = daysSince(maxUpdatedAt);
+  const checkedAtText = ""; // main.js tilføjer “Senest tjekket …” bagefter
+  const staleText =
+    dSince === null ? "OK – data vist." :
+    dSince === 0 ? "OK – data vist. Nye kurser i dag." :
+    `OK – data vist. Ingen nye kurser i dag endnu (${dSince} dag gammel).`;
+
+  if (statusTextEl) {
+    statusTextEl.textContent = `${staleText}${checkedAtText}`;
+  }
+
+  if (lastUpdatedEl) {
+    const lu = toLocalDateTime(maxUpdatedAt);
+    lastUpdatedEl.textContent = `Seneste handelsdag: ${lu || "—"}`;
+  }
+
+  // render HTML (bokse + tabel)
+  const profitClass = totalProfit >= 0 ? "pos" : "neg";
+
   container.innerHTML = `
-    <div class="cards">
-      <div class="card">
-        <div class="card-title">Samlet porteføljeværdi:</div>
-        <div class="card-value" id="totalValue">—</div>
+    <div class="summaryRow">
+      <div class="summaryCard">
+        <div class="summaryLabel">Samlet porteføljeværdi:</div>
+        <div class="summaryValue">${fmtDKK(totalValue)}</div>
       </div>
-      <div class="card">
-        <div class="card-title">Samlet gevinst/tab siden 10.09.2025:</div>
-        <div class="card-value accent" id="totalProfit">—</div>
+
+      <div class="summaryCard">
+        <div class="summaryLabel">Samlet gevinst/tab siden ${String(purchaseDateISO || "").slice(0,10) || "start"}:</div>
+        <div class="summaryValue ${profitClass}">${fmtDKK(totalProfit)}</div>
       </div>
     </div>
 
-    <div class="table-wrap">
-      <table class="table">
+    <div class="tableWrap">
+      <table class="portfolioTable">
         <thead>
           <tr>
             <th>Navn</th>
@@ -164,90 +149,19 @@ function buildSkeleton(container) {
             <th>Kurs (DKK)</th>
           </tr>
         </thead>
-        <tbody id="rows"></tbody>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.name}</td>
+              <td class="${r.pct >= 0 ? "pos" : "neg"}">${fmtPct(r.pct)}</td>
+              <td class="${r.profitDKK >= 0 ? "pos" : "neg"}">${fmtDKK(r.profitDKK)}</td>
+              <td>${r.currentText}</td>
+              <td>${Number(r.qty).toLocaleString("da-DK")}</td>
+              <td>${fmtDKK(r.currentDKK)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
       </table>
     </div>
   `;
-}
-
-/* =========================================================
-   AFSNIT 05 – Render
-   ========================================================= */
-
-export function renderPortfolio({
-  container,
-  statusTextEl,
-  lastUpdatedEl,
-  holdings,
-  eurDkk,
-  purchaseDateISO
-}) {
-  clearEl(container);
-
-  const updatedAt = holdings?.updatedAt || holdings?.updatedAtISO || null;
-  const list = Array.isArray(holdings?.items) ? holdings.items : [];
-
-  buildSkeleton(container);
-
-  const updatedDate = parseISO(updatedAt);
-  const now = new Date();
-
-  if (lastUpdatedEl) {
-    lastUpdatedEl.textContent =
-      "Seneste handelsdag: " +
-      formatDateTimeLocal(updatedAt) +
-      (holdings?.source ? " • Opdateret af: " + holdings.source : "");
-  }
-
-  if (statusTextEl) {
-    if (updatedDate && !isSameLocalDate(updatedDate, now)) {
-      const days = diffDaysLocal(updatedDate, now);
-      statusTextEl.textContent =
-        `OK – data vist. Ingen nye kurser i dag endnu (${days} dag${days === 1 ? "" : "e"} gammel).`;
-    } else {
-      statusTextEl.textContent = "OK – data vist.";
-    }
-  }
-
-  if (!list.length) {
-    renderInfoBox(container, "Ingen data tilgængelig.");
-    return;
-  }
-
-  const rows = list.map(h => computeRow(h, eurDkk));
-
-  const totalValue = rows.reduce((sum, r) => sum + r.valueDKK, 0);
-  const totalProfit = rows.reduce((sum, r) => sum + r.profitDKK, 0);
-
-  const totalValueEl = container.querySelector("#totalValue");
-  const totalProfitEl = container.querySelector("#totalProfit");
-  if (totalValueEl) totalValueEl.textContent = fmtDKK(totalValue);
-  if (totalProfitEl) totalProfitEl.textContent = fmtDKK(totalProfit);
-
-  const tbody = container.querySelector("#rows");
-  if (!tbody) return;
-
-  tbody.innerHTML = rows
-    .map(r => {
-      const kursText =
-        r.currency === "EUR"
-          ? `${fmtNum(r.price, 2)} EUR`
-          : `${fmtNum(r.price, 2)} DKK`;
-
-      const kursDKKText = fmtDKK(r.priceDKK).replace(" DKK", "");
-
-      const profitClass = r.profitDKK >= 0 ? "pos" : "neg";
-
-      return `
-        <tr>
-          <td>${escapeHtml(r.name)}</td>
-          <td class="${profitClass}">${fmtPct(r.profitPct, 2)}</td>
-          <td class="${profitClass}">${fmtDKK(r.profitDKK)}</td>
-          <td>${kursText}</td>
-          <td>${fmtNum(r.qty, 0)}</td>
-          <td>${kursDKKText} DKK</td>
-        </tr>
-      `;
-    })
-    .join("");
 }
