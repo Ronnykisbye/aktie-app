@@ -1,58 +1,91 @@
 /* =========================================================
-   AFSNIT XX – Summary “knapper”
+   style.css
+   Kun relevante styles til totals + tabel (bevarer dit look)
    ========================================================= */
-.summaryRow{
+
+/* =========================
+   AFSNIT 01 – Layout
+   ========================= */
+.stats{
   display:flex;
   gap:18px;
   justify-content:center;
   align-items:stretch;
-  margin:14px auto 18px;
-  flex-wrap:wrap;
+  margin:18px auto 22px auto;
+  max-width: 980px;
+  padding: 0 14px;
+  flex-wrap: wrap;
 }
 
-.summaryCard{
-  min-width:280px;
-  max-width:420px;
-  padding:14px 18px;
-  border-radius:14px;
-  background: rgba(10, 30, 45, 0.18);
-  border: 1px solid rgba(90, 170, 220, 0.35);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.18);
-  backdrop-filter: blur(6px);
+/* =========================
+   AFSNIT 02 – “Knapper” til totals
+   ========================= */
+.stat-btn{
+  flex: 1 1 320px;
+  border: none;
+  border-radius: 18px;
+  padding: 18px 18px;
+  cursor: default; /* det er en “visnings-knap” */
+  background: rgba(15, 30, 45, 0.08);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+  text-align: center;
 }
 
-.summaryLabel{
-  font-weight:600;
-  opacity:0.85;
-  margin-bottom:6px;
+.stat-btn .stat-title{
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-bottom: 10px;
 }
 
-.summaryValue{
-  font-size:1.25rem;
-  font-weight:800;
+.stat-btn .stat-value{
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
 }
 
-.pos{ color: #00c88c; }
-.neg{ color: #e65050; }
+.stat-btn.stat-accent{
+  background: rgba(0, 160, 255, 0.10);
+}
 
-.tableWrap{
-  width: min(1100px, 96vw);
+.stat-btn.stat-accent .stat-value{
+  color: #0aa34f;
+}
+
+/* =========================
+   AFSNIT 03 – Tabel wrapper
+   ========================= */
+.table-wrap{
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 14px 30px 14px;
 }
 
-.portfolioTable{
+.table{
   width:100%;
-  border-collapse:collapse;
-  overflow:hidden;
-  border-radius:14px;
+  border-collapse: collapse;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-.portfolioTable thead th{
-  text-align:left;
-  padding:14px 12px;
+.table thead th{
+  background: #0b6f9f;
+  color: #fff;
+  padding: 14px 12px;
+  font-size: 15px;
+  text-align: left;
 }
 
-.portfolioTable tbody td{
-  padding:14px 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+.table tbody td{
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+.pos{
+  font-weight: 700;
+  color: #0aa34f;
 }
