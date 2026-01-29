@@ -1,58 +1,58 @@
 /* =========================================================
-   KNAPPER – AKTIE APP
+   AFSNIT XX – Summary “knapper”
    ========================================================= */
-
-.actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 16px 0 6px;
+.summaryRow{
+  display:flex;
+  gap:18px;
+  justify-content:center;
+  align-items:stretch;
+  margin:14px auto 18px;
+  flex-wrap:wrap;
 }
 
-.actions button {
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.summaryCard{
+  min-width:280px;
+  max-width:420px;
+  padding:14px 18px;
+  border-radius:14px;
+  background: rgba(10, 30, 45, 0.18);
+  border: 1px solid rgba(90, 170, 220, 0.35);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+  backdrop-filter: blur(6px);
 }
 
-/* Primær knap */
-.actions button#refresh {
-  background: linear-gradient(135deg, #0a5ea8, #1d9bf0);
-  color: white;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+.summaryLabel{
+  font-weight:600;
+  opacity:0.85;
+  margin-bottom:6px;
 }
 
-.actions button#refresh:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(0,0,0,0.35);
+.summaryValue{
+  font-size:1.25rem;
+  font-weight:800;
 }
 
-/* Sekundære knapper */
-.actions button.ghost {
-  background: rgba(0,0,0,0.04);
-  color: #0a5ea8;
-  border: 1px solid rgba(0,0,0,0.12);
+.pos{ color: #00c88c; }
+.neg{ color: #e65050; }
+
+.tableWrap{
+  width: min(1100px, 96vw);
+  margin: 0 auto;
 }
 
-.actions button.ghost:hover {
-  background: rgba(10, 94, 168, 0.08);
+.portfolioTable{
+  width:100%;
+  border-collapse:collapse;
+  overflow:hidden;
+  border-radius:14px;
 }
 
-/* Aktiv graf */
-.actions button.active {
-  background: #0a5ea8;
-  color: white;
+.portfolioTable thead th{
+  text-align:left;
+  padding:14px 12px;
 }
 
-/* Disabled */
-.actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.portfolioTable tbody td{
+  padding:14px 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
