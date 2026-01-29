@@ -7,6 +7,7 @@ AFSNIT 01 - Farver
   --txt:#e6eef7;
   --muted:#9fb0c3;
   --brand:#00bfff;
+  --btnText:#00121d;
   --green:#38d18e;
   --red:#ff5a6e;
   --equal:#b7c4d6;
@@ -25,6 +26,7 @@ html[data-theme="light"]{
   --txt:#0c1722;
   --muted:#4d657a;
   --brand:#0077b6;
+  --btnText:#ffffff;
   --green:#0f8a52;
   --red:#cc1f3a;
   --equal:#3a5164;
