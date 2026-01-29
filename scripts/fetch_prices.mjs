@@ -1,362 +1,295 @@
 /**
- * =========================================================
  * AFSNIT 01 – Formål
- * =========================================================
- * Stabil auto-opdatering til data/prices.json via GitHub Actions.
+ * Henter seneste NAV/indre værdi for 3 Nordea-fonde og opdaterer data/prices.json.
+ * - DK-fonde hentes fra Nasdaq "Fund Info" (Indre værdi)
+ * - LU-fond hentes fra NordeaFunds (Regnskabsmæssige indre værdi pr. dato) i DKK
+ *   og omregnes til EUR ved hjælp af ECB EUR/DKK.
  *
- * Bemærk:
- * Denne fil var tidligere blevet afbrudt midt i en funktion (linje ~373),
- * hvilket gav: "SyntaxError: missing ) after argument list".
- * Denne version er fuldt afsluttet og kan køre igen.
- *
- * Historik:
- * - Vi gemmer KUN de 10 seneste datapunkter pr. fond (til grafer).
+ * Output:
+ * {
+ *   "updatedAt": "ISO UTC",        // seneste handelsdag/tid vi kan udlede
+ *   "fetchedAt": "ISO UTC",        // hvornår workflowet kørte
+ *   "source": "github-action",
+ *   "items": [
+ *     { name, isin, currency, price, history:[{date, price}, ... max 10] }
+ *   ]
+ * }
  */
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs/promises";
 
-/* =========================================================
-   AFSNIT 02 – Paths / Konstanter
-   ========================================================= */
-const ROOT = process.cwd();
-const OUT_FILE = path.join(ROOT, "data", "prices.json");
+/**
+ * AFSNIT 02 – Konfiguration
+ */
+const OUT_PATH = "data/prices.json";
 
-/* =========================================================
-   AFSNIT 03 – Fond-konfiguration
-   ========================================================= */
-const FUNDS = [
-  {
-    name: "Nordea Empower Europe Fund BQ",
-    currencyHint: "EUR",
-    yahooSymbol: null,
-    yahooSearch: {
-      isin: null,
-      query: "Nordea Empower Europe Fund BQ"
-    },
-    fallback: {
-      type: "fundconnect",
-      url: "https://www.fundconnect.com/Home/FundOverview?fundId=34687"
-    }
-  },
-  {
-    name: "Nordea Invest Europe Enhanced KL 1",
-    currencyHint: "DKK",
-    yahooSymbol: null,
-    yahooSearch: {
-      isin: null,
-      query: "Nordea Invest Europe Enhanced KL 1"
-    },
-    fallback: {
-      type: "netdania",
-      url: "https://m.netdania.com/funds/ndieuenhkl1-co/idc-dla-eq"
-    }
-  },
-  {
-    name: "Nordea Invest Global Enhanced KL 1",
-    currencyHint: "DKK",
-    yahooSymbol: null,
-    yahooSearch: {
-      isin: null,
-      query: "Nordea Invest Global Enhanced KL 1"
-    },
-    fallback: {
-      type: "netdania",
-      url: "https://m.netdania.com/funds/ndigloenkl1-co/idc-dla-eq"
-    }
+// Nasdaq (DK)
+const NASDAQ_GLOBAL =
+  "https://www.nasdaq.com/fi/european-market-activity/funds/ndiglenhkl1/fund-info?id=TX2670160";
+const NASDAQ_EUROPE =
+  "https://www.nasdaq.com/fi/european-market-activity/funds/ndieuenhkl1/fund-info?id=TX2670158";
+
+// NordeaFunds (LU)
+const NORDEA_EMPOWER =
+  "https://www.nordeafunds.com/da/fonde/empower-europe-fund-bq";
+
+// ECB EUR rates (EUR base, includes DKK)
+const ECB_DAILY_XML =
+  "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+
+/**
+ * AFSNIT 03 – Små hjælpefunktioner
+ */
+function toNumber(str) {
+  if (!str) return null;
+  // "209,69" -> 209.69
+  const cleaned = String(str).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isoNowUtc() {
+  return new Date().toISOString();
+}
+
+function yyyyMmDdFromDate(dateObj) {
+  const y = dateObj.getUTCFullYear();
+  const m = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function fetchText(url) {
+  const res = await fetch(url, {
+    headers: { "user-agent": "aktie-app-bot/1.0" },
+  });
+  if (!res.ok) {
+    throw new Error(`Fetch fejlede (${res.status}) for ${url}`);
   }
-];
+  return await res.text();
+}
 
-/* =========================================================
-   AFSNIT 04 – Fil-hjælpere
-   ========================================================= */
-function readJsonSafe(file) {
+/**
+ * AFSNIT 04 – Parsere (Nasdaq)
+ * Vi udtrækker "Indre værdi (realtid) 209,69"
+ */
+function parseNasdaqIndreVaerdi(html) {
+  // prøv flere varianter (sprog/format)
+  const patterns = [
+    /Indre værdi\s*\(realtid\)\s*([0-9]+(?:[.,][0-9]+)?)/i,
+    /Net Asset Value\s*\(real time\)\s*([0-9]+(?:[.,][0-9]+)?)/i,
+  ];
+
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m && m[1]) return toNumber(m[1]);
+  }
+  return null;
+}
+
+/**
+ * AFSNIT 05 – Parsere (NordeaFunds)
+ * Udtrækker:
+ * "Regnskabsmæssige indre værdi (per 27.01.) 853,99"
+ */
+function parseNordeaFundsIndreVaerdiDkkAndDate(html) {
+  // dato i format "27.01." og værdi som "853,99"
+  const m = html.match(
+    /Regnskabsmæssige indre værdi\s*\(per\s*([0-9]{2})\.([0-9]{2})\.\)\s*([\d.,]+)/i
+  );
+
+  if (!m) return { dkk: null, date: null };
+
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const dkk = toNumber(m[3]);
+
+  if (!dkk || !day || !month) return { dkk: null, date: null };
+
+  // Antag samme år som "nu" (det passer til din case her i januar)
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+    2,
+    "0"
+  )}`;
+
+  return { dkk, date };
+}
+
+/**
+ * AFSNIT 06 – ECB EUR/DKK
+ * ECB XML har EUR som base, og DKK er fx 7.46...
+ */
+function parseEcbDkkRate(xml) {
+  // fx: currency='DKK' rate='7.4602'
+  const m = xml.match(/currency=['"]DKK['"]\s+rate=['"]([0-9.]+)['"]/i);
+  if (!m) return null;
+  const rate = Number(m[1]);
+  return Number.isFinite(rate) ? rate : null;
+}
+
+/**
+ * AFSNIT 07 – History (max 10 punkter)
+ */
+function loadPrevious(jsonText) {
   try {
-    if (!fs.existsSync(file)) return null;
-    const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw);
+    return JSON.parse(jsonText);
   } catch {
     return null;
   }
 }
 
-function writeJsonSafe(file, obj) {
-  const dir = path.dirname(file);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2), "utf-8");
+function ensureHistory(prevItem) {
+  if (!prevItem || !Array.isArray(prevItem.history)) return [];
+  // behold kun gyldige punkter
+  return prevItem.history
+    .filter((p) => p && p.date && typeof p.price === "number")
+    .slice(-10);
 }
 
-function nowIsoUtc() {
-  return new Date().toISOString();
-}
+function upsertHistory(history, date, price) {
+  if (!date || typeof price !== "number") return history.slice(-10);
 
-/* =========================================================
-   AFSNIT 04B – Historik-hjælpere (10 seneste punkter)
-   ========================================================= */
-const MAX_HISTORY_POINTS = 10;
-
-function isoDateOnly(iso) {
-  if (!iso) return null;
-  const s = String(iso);
-  return s.includes("T") ? s.split("T")[0] : s;
-}
-
-function mergeHistory(prevHistory, nextHistory) {
-  const map = new Map();
-
-  const add = (arr) => {
-    if (!Array.isArray(arr)) return;
-    for (const p of arr) {
-      const d = p?.date;
-      const price = Number(p?.price);
-      if (!d || !Number.isFinite(price)) continue;
-      map.set(d, { date: d, price });
-    }
-  };
-
-  add(prevHistory);
-  add(nextHistory);
-
-  const merged = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-
-  if (merged.length > MAX_HISTORY_POINTS) {
-    return merged.slice(merged.length - MAX_HISTORY_POINTS);
-  }
-  return merged;
-}
-
-function withDailyPoint(history, updatedAtIso, price) {
-  const d = isoDateOnly(updatedAtIso);
-  const p = Number(price);
-  if (!d || !Number.isFinite(p)) return Array.isArray(history) ? history : [];
-
-  const base = Array.isArray(history) ? history.slice() : [];
-  const idx = base.findIndex((x) => x?.date === d);
-
-  if (idx >= 0) base[idx] = { date: d, price: p };
-  else base.push({ date: d, price: p });
-
-  base.sort((a, b) => String(a.date).localeCompare(String(b.date)));
-
-  if (base.length > MAX_HISTORY_POINTS) {
-    return base.slice(base.length - MAX_HISTORY_POINTS);
-  }
-  return base;
-}
-
-/* =========================================================
-   AFSNIT 05 – HTTP helpers
-   ========================================================= */
-async function fetchText(url) {
-  const res = await fetch(url, {
-    headers: { "user-agent": "github-action" }
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return await res.text();
-}
-
-async function fetchJson(url) {
-  const res = await fetch(url, {
-    headers: { "user-agent": "github-action" }
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return await res.json();
-}
-
-/* =========================================================
-   AFSNIT 06 – Yahoo: find symbol (search)
-   ========================================================= */
-async function yahooFindSymbol({ query, isin }) {
-  const q = encodeURIComponent(isin || query);
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`;
-  const data = await fetchJson(url);
-
-  const candidates = Array.isArray(data?.quotes) ? data.quotes : [];
-  if (!candidates.length) throw new Error("Yahoo search: ingen kandidater");
-
-  const best = candidates.find((c) => c?.symbol) || candidates[0];
-  if (!best?.symbol) throw new Error("Yahoo search: ingen symbol");
-  return best.symbol;
-}
-
-/* =========================================================
-   AFSNIT 07 – Yahoo: chart (pris + historik)
-   ========================================================= */
-async function yahooFetchChart(symbol) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    symbol
-  )}?range=3mo&interval=1d&includePrePost=false&events=div%7Csplit%7Cearn&lang=da-DK&region=DK`;
-
-  const data = await fetchJson(url);
-  const result = data?.chart?.result?.[0];
-  if (!result) throw new Error("Yahoo chart: ingen result");
-
-  const meta = result.meta || {};
-  const currency = meta.currency || null;
-
-  const ts = Array.isArray(result.timestamp) ? result.timestamp : [];
-  const closes = result?.indicators?.quote?.[0]?.close || [];
-
-  const history = [];
-  for (let i = 0; i < ts.length; i++) {
-    const t = ts[i];
-    const c = closes[i];
-    if (t && Number.isFinite(c)) {
-      const d = new Date(t * 1000);
-      const date = d.toISOString().slice(0, 10);
-      history.push({ date, price: Number(c) });
-    }
+  const last = history[history.length - 1];
+  if (last && last.date === date) {
+    // overskriv sidste datapunkt hvis samme dato (fx re-run)
+    last.price = price;
+    return history.slice(-10);
   }
 
-  let latest = null;
-  for (let i = closes.length - 1; i >= 0; i--) {
-    if (Number.isFinite(closes[i])) {
-      latest = Number(closes[i]);
-      break;
-    }
-  }
-  if (!Number.isFinite(latest)) throw new Error("Yahoo chart: ingen latest close");
-
-  return {
-    currency,
-    price: latest,
-    updatedAt: nowIsoUtc(),
-    history
-  };
+  history.push({ date, price });
+  return history.slice(-10);
 }
 
-/* =========================================================
-   AFSNIT 08 – Fallback parsere
-   ========================================================= */
-function parseNetdania(html) {
-  const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
-  if (!m) throw new Error("NetDania parse: ingen tal");
-  const price = Number(String(m[1]).replace(",", "."));
-  if (!Number.isFinite(price)) throw new Error("NetDania parse: ugyldig pris");
-  return { price, updatedAt: nowIsoUtc() };
-}
-
-function parseFundConnect(html) {
-  const m = html.match(/([0-9]+(?:[.,][0-9]+)?)/);
-  if (!m) throw new Error("FundConnect parse: ingen tal");
-  const price = Number(String(m[1]).replace(",", "."));
-  if (!Number.isFinite(price)) throw new Error("FundConnect parse: ugyldig pris");
-  return { price, updatedAt: nowIsoUtc() };
-}
-
-/* =========================================================
-   AFSNIT 09 – Hent data pr. fond (Yahoo først, fallback ellers)
-   ========================================================= */
-async function getFundData(fund, prevItem) {
-  // 1) Yahoo
-  try {
-    const symbol =
-      fund.yahooSymbol ||
-      (await yahooFindSymbol({
-        query: fund.yahooSearch?.query || fund.name,
-        isin: fund.yahooSearch?.isin || null
-      }));
-
-    const y = await yahooFetchChart(symbol);
-
-    const mergedHist = mergeHistory(prevItem?.history, y.history);
-    const hist10 = withDailyPoint(mergedHist, y.updatedAt, Number(y.price));
-
-    return {
-      name: fund.name,
-      currency: y.currency || fund.currencyHint || prevItem?.currency || "DKK",
-      price: Number(y.price),
-      updatedAt: y.updatedAt,
-      source: `yahoo:${symbol}`,
-      history: hist10
-    };
-  } catch {
-    // fortsæt til fallback
-  }
-
-  // 2) Fallback
-  const html = await fetchText(fund.fallback.url);
-  const parsed =
-    fund.fallback.type === "netdania" ? parseNetdania(html) : parseFundConnect(html);
-
-  return {
-    name: fund.name,
-    currency: fund.currencyHint || prevItem?.currency || "DKK",
-    price: Number(parsed.price),
-    updatedAt: parsed.updatedAt,
-    source: `fallback:${fund.fallback.type}`,
-    history: withDailyPoint(prevItem?.history || [], parsed.updatedAt, Number(parsed.price))
-  };
-}
-
-/* =========================================================
-   AFSNIT 10 – Main: hent alt + skriv prices.json
-   ========================================================= */
+/**
+ * AFSNIT 08 – Main
+ */
 async function main() {
-  const previous = readJsonSafe(OUT_FILE);
+  const fetchedAt = isoNowUtc();
 
-  const items = [];
-  let maxUpdatedAt = "1970-01-01T00:00:00.000Z";
-
-  for (const fund of FUNDS) {
-    const prevItem = previous?.items?.find((x) => x?.name === fund.name);
-
-    try {
-      const data = await getFundData(fund, prevItem);
-      items.push(data);
-      if (data.updatedAt > maxUpdatedAt) maxUpdatedAt = data.updatedAt;
-      continue;
-    } catch {
-      // 3) Sidste fallback: brug forrige, men sørg stadig for dagspunkt i historik
-    }
-
-    if (prevItem) {
-      const fallbackUpdatedAt = prevItem.updatedAt || previous?.updatedAt || nowIsoUtc();
-
-      items.push({
-        name: fund.name,
-        currency: prevItem.currency || fund.currencyHint || "DKK",
-        price: Number(prevItem.price) || 0,
-        updatedAt: fallbackUpdatedAt,
-        source: "previous",
-        history: withDailyPoint(
-          prevItem.history || [],
-          fallbackUpdatedAt,
-          Number(prevItem.price) || 0
-        )
-      });
-
-      if (fallbackUpdatedAt > maxUpdatedAt) maxUpdatedAt = fallbackUpdatedAt;
-    } else {
-      const fallbackUpdatedAt = previous?.updatedAt || nowIsoUtc();
-
-      items.push({
-        name: fund.name,
-        currency: fund.currencyHint || "DKK",
-        price: 0,
-        updatedAt: fallbackUpdatedAt,
-        source: "missing",
-        history: []
-      });
-
-      if (fallbackUpdatedAt > maxUpdatedAt) maxUpdatedAt = fallbackUpdatedAt;
-    }
+  // læs tidligere fil hvis den findes
+  let prev = null;
+  try {
+    const prevText = await fs.readFile(OUT_PATH, "utf-8");
+    prev = loadPrevious(prevText);
+  } catch {
+    prev = null;
   }
+
+  // 1) DK fonde fra Nasdaq
+  const [htmlGlobal, htmlEurope] = await Promise.all([
+    fetchText(NASDAQ_GLOBAL),
+    fetchText(NASDAQ_EUROPE),
+  ]);
+
+  const priceGlobal = parseNasdaqIndreVaerdi(htmlGlobal);
+  const priceEurope = parseNasdaqIndreVaerdi(htmlEurope);
+
+  if (priceGlobal == null) {
+    throw new Error("Kunne ikke finde indre værdi på Nasdaq for Global Enhanced.");
+  }
+  if (priceEurope == null) {
+    throw new Error("Kunne ikke finde indre værdi på Nasdaq for Europe Enhanced.");
+  }
+
+  // 2) LU fond fra NordeaFunds: indre værdi i DKK + dato
+  const htmlEmpower = await fetchText(NORDEA_EMPOWER);
+  const { dkk: empowerDkk, date: empowerDate } =
+    parseNordeaFundsIndreVaerdiDkkAndDate(htmlEmpower);
+
+  if (empowerDkk == null || !empowerDate) {
+    throw new Error(
+      "Kunne ikke finde 'Regnskabsmæssige indre værdi (per ..)' på NordeaFunds siden."
+    );
+  }
+
+  // 3) ECB EUR/DKK for omregning (så appen kan vise kurs i EUR for LU-fonden)
+  const ecbXml = await fetchText(ECB_DAILY_XML);
+  const eurDkk = parseEcbDkkRate(ecbXml);
+
+  if (eurDkk == null) {
+    throw new Error("Kunne ikke finde EUR/DKK i ECB daily XML.");
+  }
+
+  const empowerEur = Number((empowerDkk / eurDkk).toFixed(2));
+
+  // 4) Byg items + history (10 seneste)
+  const today = new Date();
+  const todayIso = yyyyMmDdFromDate(today);
+
+  const prevItems = Array.isArray(prev?.items) ? prev.items : [];
+
+  function prevByIsin(isin) {
+    return prevItems.find((x) => x && x.isin === isin) || null;
+  }
+
+  // DK0060949964 – Europe Enhanced
+  const europePrev = prevByIsin("DK0060949964");
+  let europeHistory = ensureHistory(europePrev);
+  europeHistory = upsertHistory(europeHistory, todayIso, priceEurope);
+
+  // DK0060949881 – Global Enhanced
+  const globalPrev = prevByIsin("DK0060949881");
+  let globalHistory = ensureHistory(globalPrev);
+  globalHistory = upsertHistory(globalHistory, todayIso, priceGlobal);
+
+  // LU3076185670 – Empower Europe Fund BQ (vi gemmer i EUR i appens "Kurs"-kolonne)
+  const empowerPrev = prevByIsin("LU3076185670");
+  let empowerHistory = ensureHistory(empowerPrev);
+  empowerHistory = upsertHistory(empowerHistory, empowerDate, empowerEur);
+
+  // 5) updatedAt: brug den “nyeste” dato vi faktisk har (empowerDate kan være i går)
+  // Vi sætter updatedAt til "fetchedAt" men appen viser handelsdag ud fra dette felt i dag.
+  // Derfor sætter vi updatedAt til fetchedAt (UTC), og appen kan stadig vise "senest tjekket"
+  // separat via fetchedAt, som den allerede gør.
+  const updatedAt = fetchedAt;
 
   const out = {
-    updatedAt: maxUpdatedAt,
+    updatedAt,
+    fetchedAt,
     source: "github-action",
-    items
+    items: [
+      {
+        name: "Nordea Empower Europe Fund BQ",
+        isin: "LU3076185670",
+        currency: "EUR",
+        price: empowerEur,
+        history: empowerHistory,
+      },
+      {
+        name: "Nordea Invest Europe Enhanced KL 1",
+        isin: "DK0060949964",
+        currency: "DKK",
+        price: priceEurope,
+        history: europeHistory,
+      },
+      {
+        name: "Nordea Invest Global Enhanced KL 1",
+        isin: "DK0060949881",
+        currency: "DKK",
+        price: priceGlobal,
+        history: globalHistory,
+      },
+    ],
   };
 
-  writeJsonSafe(OUT_FILE, out);
+  await fs.writeFile(OUT_PATH, JSON.stringify(out, null, 2) + "\n", "utf-8");
 
-  console.log(`✅ Wrote ${OUT_FILE}`);
-  console.log(`updatedAt: ${out.updatedAt}`);
-  console.log(`items: ${out.items.length}`);
+  console.log("✅ Opdaterede", OUT_PATH);
+  console.log(
+    "Empower (EUR):",
+    empowerEur,
+    "DKK indre værdi:",
+    empowerDkk,
+    "EUR/DKK:",
+    eurDkk
+  );
+  console.log("Europe Enhanced (DKK):", priceEurope);
+  console.log("Global Enhanced (DKK):", priceGlobal);
 }
 
 main().catch((err) => {
-  console.error("❌ fetch_prices.mjs fejlede:", err);
+  console.error("❌ FEJL:", err?.message || err);
   process.exit(1);
 });
