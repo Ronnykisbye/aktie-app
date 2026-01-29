@@ -54,7 +54,7 @@ AFSNIT 02 - Knapper
 
 button{
   background:var(--brand);
-  color:#00121d;
+  color:var(--btnText);
   border:none;
   padding:10px 16px;
   border-radius:10px;
@@ -73,6 +73,103 @@ button.ghost{
   box-shadow:none;
 }
 button.ghost:hover{ color:var(--txt); }
+
+/*
+AFSNIT 02B - Icon knap (tema)
+*/
+.icon-btn{
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--card);
+  color:var(--txt);
+  border:1px solid var(--border);
+  box-shadow:0 6px 16px rgba(0,0,0,0.12);
+}
+.icon-btn:hover{ filter:brightness(1.05); }
+
+/*
+AFSNIT 02C - Visuel feedback (blink) ved opdatering
+*/
+.flash{
+  animation: flashPulse 380ms ease-out;
+}
+@keyframes flashPulse{
+  0%   { filter:brightness(1); }
+  45%  { filter:brightness(1.25); }
+  100% { filter:brightness(1); }
+}
+
+/*
+AFSNIT 02D - Graf-panel + controls (professionelt look)
+*/
+.graphPanel{
+  width: min(1100px, 96vw);
+  margin: 18px auto 0;
+  padding: 14px 14px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.14);
+}
+
+.graphHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.graphControls{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin: 6px 0 12px;
+  color: var(--txt);
+}
+
+.graphControls label{
+  color: var(--muted);
+  font-weight:700;
+}
+
+.graphControls select{
+  appearance:none;
+  padding:10px 38px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--txt);
+  font-weight:700;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.graphControls select:focus{
+  outline: none;
+  border-color: rgba(0,191,255,0.55);
+  box-shadow: 0 0 0 4px rgba(0,191,255,0.14);
+}
+
+#graphCanvas{
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+}
 
 /*
 AFSNIT 03 - Table
@@ -120,9 +217,6 @@ AFSNIT 04 - Mobil (tabelkolonner)
 
 /*
 AFSNIT 05 - Totals (2 tydelige 3D bokse)
-- Vi bruger de 2 <h3> der allerede findes (ingen JS ændring)
-- På PC: 2 bokse ved siden af hinanden
-- På mobil: under hinanden
 */
 .totals{
   display:grid;
@@ -131,27 +225,20 @@ AFSNIT 05 - Totals (2 tydelige 3D bokse)
   margin:18px 0 10px;
 }
 
-/* På smalle skærme: 1 kolonne */
 @media (max-width:700px){
   .totals{ grid-template-columns: 1fr; }
 }
 
-/*
-AFSNIT 06 - 3D Card-styling (selve boksene)
-*/
 .totals h3{
   margin:0;
   padding:16px 16px;
   border-radius:16px;
-
   background: var(--card);
   border: 1px solid var(--border);
-
   box-shadow:
     0 14px 28px rgba(0,0,0,0.16),
     0 2px 0 rgba(255,255,255,0.06) inset,
     0 -2px 0 rgba(0,0,0,0.06) inset;
-
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 
   display:flex;
@@ -176,9 +263,6 @@ AFSNIT 06 - 3D Card-styling (selve boksene)
   filter: brightness(1.02);
 }
 
-/*
-AFSNIT 07 - “Tal-knap” (span.value) = ekstra tydeligt
-*/
 .totals h3 .value{
   display:inline-flex;
   align-items:center;
@@ -200,9 +284,6 @@ AFSNIT 07 - “Tal-knap” (span.value) = ekstra tydeligt
   letter-spacing: .2px;
 }
 
-/*
-AFSNIT 08 - Farve/kontrast for gevinst vs tab
-*/
 .totals h3.pos .value{
   background: rgba(0, 200, 100, 0.16);
   border-color: rgba(0, 200, 100, 0.38);
@@ -215,16 +296,12 @@ AFSNIT 08 - Farve/kontrast for gevinst vs tab
   color: var(--red);
 }
 
-/* Hvis neutral (0), så grå */
 .totals h3.neu .value{
   background: rgba(150,150,150,0.12);
   border-color: rgba(150,150,150,0.28);
   color: var(--muted);
 }
 
-/*
-AFSNIT 09 - Små skærme: lidt mindre “tal-knap”
-*/
 @media (max-width:480px){
   .totals h3{
     padding:14px 12px;
@@ -232,13 +309,6 @@ AFSNIT 09 - Små skærme: lidt mindre “tal-knap”
   }
   .totals h3 .value{
     font-size:1.2rem;
-    padding:8px 12px;
+    padding:9px 12px;
   }
-}
-
-/*
-AFSNIT 10 – Farvefix: Samlet porteføljeværdi (beløb) skal være sort
-*/
-#totalValue{
-  color:#000;
 }
