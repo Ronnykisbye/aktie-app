@@ -1,19 +1,21 @@
 <!DOCTYPE html>
-<html lang="da" data-theme="dark" data-build="2026-01-21-aktieapp-01">
+<html lang="da" data-theme="dark" data-build="2026-01-29-aktieapp">
 <head>
   <!-- =========================================================
-       AFSNIT 01 – META / VIEWPORT
+       AFSNIT 01 – META
        ========================================================= -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- =========================================================
-       AFSNIT 02 – TITLE
+       AFSNIT 02 – TITLE & ICON
        ========================================================= -->
   <title>Aktie App</title>
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
 
   <!-- =========================================================
-       AFSNIT 03 – PWA / MANIFEST
+       AFSNIT 03 – PWA
        ========================================================= -->
   <meta name="theme-color" content="#0a5ea8" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -21,28 +23,23 @@
 
   <!-- =========================================================
        AFSNIT 04 – CSS
-       VIGTIGT: Vi linker til css/style.css (legacy wrapper),
-       som selv importerer app.css → robust mod caches/404.
        ========================================================= -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
-  <!-- =========================================================
-       AFSNIT 05 – APP WRAPPER
-       ========================================================= -->
   <div class="app">
 
     <!-- =========================================================
-         AFSNIT 06 – HEADER
+         HEADER
          ========================================================= -->
     <header class="header">
       <div class="title">
-        <span class="logo" aria-hidden="true">📈</span>
+        <span class="logo">📈</span>
         <h1>Udvikling siden 10/09/2025 (DKK & %)</h1>
       </div>
 
-      <button id="themeToggle" class="icon-btn" type="button" aria-label="Skift tema">
+      <button id="themeToggle" class="icon-btn" title="Skift tema">
         🌙
       </button>
     </header>
@@ -50,17 +47,16 @@
     <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
 
     <!-- =========================================================
-         AFSNIT 07 – TOP ACTIONS (FAST UI)
-         VIGTIGT: Denne sektion må IKKE ligge inde i #table
+         ACTIONS
          ========================================================= -->
     <div class="actions">
-      <button id="refresh" type="button">🔄 Opdater</button>
-      <button id="pdf" type="button" class="ghost">📄 PDF</button>
-      <button id="graph" type="button" class="ghost" title="Vis graf">📈 Graf</button>
+      <button id="refresh">🔄 Opdater</button>
+      <button id="pdf" class="ghost">📄 PDF</button>
+      <button id="graph" class="ghost">📈 Graf</button>
     </div>
 
     <!-- =========================================================
-         AFSNIT 08 – STATUS (FAST UI)
+         STATUS
          ========================================================= -->
     <div id="status" class="status">
       <span id="statusText">Venter på opdatering…</span>
@@ -69,21 +65,20 @@
     </div>
 
     <!-- =========================================================
-         AFSNIT 09 – GRAF PANEL (FAST UI)
-         VIGTIGT: Må IKKE ligge inde i #table
+         GRAF
          ========================================================= -->
     <section id="graphPanel" class="graphPanel" hidden>
       <div class="graphHead">
         <strong>Graf</strong>
-        <button id="graphClose" type="button" class="ghost">Luk</button>
+        <button id="graphClose" class="ghost">Luk</button>
       </div>
 
       <div class="graphControls">
         <label for="graphMode">Vælg graf:</label>
         <select id="graphMode">
-          <option value="" selected disabled>Vælg…</option>
+          <option value="" disabled selected>Vælg…</option>
           <option value="profit">Gevinst-udvikling</option>
-          <option value="price_all">Kurs-udvikling (alle 3 fonde)</option>
+          <option value="price_all">Kursudvikling (alle)</option>
         </select>
       </div>
 
@@ -91,45 +86,32 @@
     </section>
 
     <!-- =========================================================
-         AFSNIT 10 – DATA-OMRÅDE (MÅ RE-RENDERES)
-         Her må ui.js gerne bygge totals/overblik/tabel igen og igen.
+         DATA
          ========================================================= -->
     <div id="table"></div>
 
   </div>
 
   <!-- =========================================================
-       AFSNIT 11 – Eksternt lib (valgfrit)
-       Ingen integrity-attribut → undgår SRI mismatch problemer.
+       SCRIPTS
        ========================================================= -->
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"
-  ></script>
-
-  <!-- =========================================================
-       AFSNIT 12 – Main module
-       ========================================================= -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script type="module" src="js/main.js"></script>
 
-  <!-- =========================================================
-       AFSNIT 13 – PDF (print)
-       ========================================================= -->
+  <!-- PDF -->
   <script>
-    const pdfBtn = document.getElementById("pdf");
-    if (pdfBtn) pdfBtn.addEventListener("click", () => window.print());
+    document.getElementById("pdf")?.addEventListener("click", () => {
+      window.print();
+    });
   </script>
 
-  <!-- =========================================================
-       AFSNIT 14 – Service Worker (UÆNDRET LOGIK)
-       ========================================================= -->
+  <!-- Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/aktie-app/service-worker.js")
-        .then(() => console.log("✅ Service Worker registreret"))
-        .catch((err) => console.warn("⚠️ Service Worker fejl:", err));
+        .then(() => console.log("✅ Service Worker aktiv"))
+        .catch((err) => console.warn("⚠️ SW fejl:", err));
     }
   </script>
 </body>
