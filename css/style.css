@@ -312,3 +312,12 @@ html[data-theme="dark"] .chartNote{
 html[data-theme="dark"] .select{
   color: rgba(255,255,255,0.92) !important;
 }
+
+/* =========================================================
+   AFSNIT 101 – FIX: Tabeloverskrift i LIGHT mode
+   ========================================================= */
+
+html[data-theme="light"] .fundTable thead th {
+  color: #111 !important;
+  font-weight: 600;
+}
