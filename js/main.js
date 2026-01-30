@@ -1,14 +1,13 @@
 /* =========================================================
-   js/main.js (LÅST til index.html DOM)
-   - Bruger KUN id'er der findes i index.html
-   - Stabil tema-toggle
-   - Stabil graf (open/close + redraw)
-   - Status inkluderer "Sidst opdateret" (lokal tid)
+   js/main.js (LÅST til index.html)
+   - Matcher id'er i index.html 1:1
+   - Tema-toggle stabil (data-theme + localStorage)
+   - Opdater -> henter data -> render
+   - Graf -> åbner/lukker + redraw ved tema/resize
    ========================================================= */
 
 import { getLatestHoldingsPrices, getEURDKK } from "./api.js";
 import { renderPortfolio, renderChart } from "./ui.js";
-import { getPurchaseTotalDKKByName } from "../data/purchase-prices.js";
 
 /* =========================
    AFSNIT 01 – DOM refs (MATCHER index.html)
@@ -36,13 +35,10 @@ const chartType = document.getElementById("chartType");
 const chartCanvas = document.getElementById("chartCanvas");
 
 /* =========================
-   AFSNIT 02 – Konfig
+   AFSNIT 02 – Theme
    ========================= */
 const THEME_KEY = "aktieapp-theme";
 
-/* =========================
-   AFSNIT 03 – Tema (stabil)
-   ========================= */
 function setTheme(t) {
   const theme = t === "light" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", theme);
@@ -54,49 +50,25 @@ function initTheme() {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === "light" || saved === "dark") return setTheme(saved);
 
-  // fallback: brug det der står i HTML (default dark)
   const htmlTheme = document.documentElement.getAttribute("data-theme") || "dark";
   setTheme(htmlTheme);
 }
 
 /* =========================
-   AFSNIT 04 – Purchase totals -> buyPrice pr stk
-   ========================= */
-function applyPurchaseTotalsToItems(items, eurDkk) {
-  return items.map((it) => {
-    const name = it?.name || "";
-    const qty = Number(it?.quantity ?? 0) || 0;
-    const currency = String(it?.currency || "DKK").toUpperCase();
-    const purchaseTotalDKK = getPurchaseTotalDKKByName(name);
-
-    if (!purchaseTotalDKK || !qty) return it;
-
-    const buyDKKPerUnit = purchaseTotalDKK / qty;
-    const buyPriceInFundCurrency = currency === "EUR" && eurDkk ? buyDKKPerUnit / eurDkk : buyDKKPerUnit;
-
-    return { ...it, buyPrice: Number(buyPriceInFundCurrency) };
-  });
-}
-
-/* =========================
-   AFSNIT 05 – State (graf redraw)
+   AFSNIT 03 – State
    ========================= */
 let lastHoldings = null;
 let lastEurDkk = null;
 
-/* =========================
-   AFSNIT 06 – Canvas size (så den ser ens ud)
-   ========================= */
 function ensureCanvasSize() {
   if (!chartCanvas) return;
-  // 900 bred gør labels mere læsbare, men vi tilpasser hvis mobil
-  const maxW = Math.min(980, Math.max(520, window.innerWidth - 60));
+  const maxW = Math.min(980, Math.max(560, window.innerWidth - 60));
   chartCanvas.width = maxW;
-  chartCanvas.height = 220;
+  chartCanvas.height = 240;
 }
 
 /* =========================
-   AFSNIT 07 – Load + render
+   AFSNIT 04 – Load + render
    ========================= */
 async function loadAndRender({ reason = "init" } = {}) {
   try {
@@ -104,21 +76,12 @@ async function loadAndRender({ reason = "init" } = {}) {
 
     const refreshedAtISO = new Date().toISOString();
 
-    // 1) EUR/DKK
     const eurDkk = await getEURDKK();
-
-    // 2) Holdings
     const holdings = await getLatestHoldingsPrices();
 
-    // 3) Patch buyPrice fra purchase totals
-    const items = Array.isArray(holdings?.items) ? holdings.items : [];
-    const patchedItems = applyPurchaseTotalsToItems(items, eurDkk);
-    const patchedHoldings = { ...holdings, items: patchedItems };
-
-    lastHoldings = patchedHoldings;
+    lastHoldings = holdings;
     lastEurDkk = eurDkk;
 
-    // 4) Render stats + tabel + status
     renderPortfolio({
       statusEl,
       totalValueEl,
@@ -126,12 +89,11 @@ async function loadAndRender({ reason = "init" } = {}) {
       rowsEl,
       boxTotalEl,
       boxGainEl,
-      holdings: patchedHoldings,
+      holdings,
       eurDkk,
       refreshedAtISO
     });
 
-    // 5) hvis graf åben: redraw
     if (chartSection && !chartSection.hidden) {
       ensureCanvasSize();
       renderChart({
@@ -148,23 +110,17 @@ async function loadAndRender({ reason = "init" } = {}) {
 }
 
 /* =========================
-   AFSNIT 08 – Graf UI (stabil)
+   AFSNIT 05 – Graf UI
    ========================= */
 function openChart() {
   if (!chartSection) return;
   chartSection.hidden = false;
 
-  if (!chartType.value) chartType.value = "gain";
-
+  if (chartType && !chartType.value) chartType.value = "gain";
   ensureCanvasSize();
 
   if (lastHoldings) {
     renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType.value });
-  } else {
-    loadAndRender({ reason: "init" }).then(() => {
-      ensureCanvasSize();
-      renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType.value });
-    });
   }
 }
 
@@ -174,7 +130,7 @@ function closeChart() {
 }
 
 /* =========================
-   AFSNIT 09 – Events
+   AFSNIT 06 – Events
    ========================= */
 initTheme();
 
@@ -182,7 +138,6 @@ btnTheme?.addEventListener("click", () => {
   const cur = document.documentElement.getAttribute("data-theme") || "dark";
   setTheme(cur === "dark" ? "light" : "dark");
 
-  // redraw chart hvis den er åben (så tekstfarver passer)
   if (chartSection && !chartSection.hidden && lastHoldings) {
     ensureCanvasSize();
     renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType?.value || "gain" });
@@ -190,9 +145,10 @@ btnTheme?.addEventListener("click", () => {
 });
 
 btnRefresh?.addEventListener("click", () => loadAndRender({ reason: "refresh" }));
-btnPDF?.addEventListener("click", () => window.print());
-btnGraph?.addEventListener("click", openChart);
 
+btnPDF?.addEventListener("click", () => window.print());
+
+btnGraph?.addEventListener("click", openChart);
 chartClose?.addEventListener("click", closeChart);
 
 chartType?.addEventListener("change", () => {
@@ -209,6 +165,6 @@ window.addEventListener("resize", () => {
 });
 
 /* =========================
-   AFSNIT 10 – Start
+   AFSNIT 07 – Start
    ========================= */
 loadAndRender({ reason: "init" });
