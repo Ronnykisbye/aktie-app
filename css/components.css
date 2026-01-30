@@ -1,365 +1,248 @@
-/*
-=========================================================
-css/components.css
-MÅL:
-- Knapper: blå og “app-agtige” i både mørk og lys
-- Ghost-knapper (PDF/Graf): får blå baggrund (ikke grå/bleg)
-- Bredde: app’en er samlet/centreret (som nu)
-=========================================================
-*/
-
 /* =========================================================
-   AFSNIT 00 – App bredde / centrering
+   components.css
+   - Basis layout + komponenter (knapper, tabeller, bokse)
    ========================================================= */
-:where(main, .app, .container, #app, .wrap){
-  width: min(1200px, 96vw);
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 10px;
-  padding-right: 10px;
+
+*{ box-sizing: border-box; }
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
-/* =========================================================
-   AFSNIT 01 – Headings & tekst
-   ========================================================= */
+.app{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 22px 18px 40px;
+}
+
+.top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topLeft{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.logo{
+  width:22px;height:22px;
+  opacity:.9;
+}
+
 h1{
-  margin:0 0 6px 0;
-  color:var(--brand);
-  font-weight:800;
+  margin:0;
+  font-size: clamp(22px, 3vw, 40px);
+  color: var(--accent);
   letter-spacing:.3px;
 }
 
-.topbar{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  text-align:left;
-}
-.topbar .title{ flex:1; min-width:0; }
-#themeToggle{ white-space:nowrap; }
-
 .hint{
-  margin:0 0 12px 0;
-  color:var(--muted);
+  margin: 14px 0 10px;
+  color: var(--muted);
 }
 
-.status{
-  margin-top:6px;
-  color:var(--muted);
-  font-size:.95rem;
+/* THEME TOGGLE */
+.themeToggle{
+  position: fixed;
+  right: 18px;
+  top: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--cardBorder);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
   display:flex;
-  gap:10px;
+  align-items:center;
   justify-content:center;
-  flex-wrap:wrap;
+  z-index: 9999;
 }
-.statusSep{ opacity:.55; }
 
-/* =========================================================
-   AFSNIT 02 – Knapper (FIX: farver i lys/mørk)
-   ========================================================= */
+/* ACTION BUTTONS */
 .actions{
   display:flex;
-  gap:12px;
   justify-content:center;
-  margin:10px 0 6px;
-  flex-wrap:wrap;
+  gap: 12px;
+  margin: 12px 0 10px;
+  flex-wrap: wrap;
 }
 
-/* Baseline (gælder alle knapper) */
-button{
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  font-weight:800;
-  cursor:pointer;
-  transition:transform .06s ease, filter .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
-}
-button:hover{ transform:translateY(-1px); filter:brightness(1.06); }
-button:active{ transform:translateY(1px); }
-
-/* --- Primærknap (Opdater) --- */
-/* Dark: klar neon-blå */
-html[data-theme="dark"] button{
-  background: #00bfff;
-  color: #00121d;
-  box-shadow: 0 10px 24px rgba(0,191,255,.28);
-  border: 1px solid rgba(0,191,255,.35);
-}
-
-/* Light: rolig “LinkedIn-blå” */
-html[data-theme="light"] button{
-  background: #0b6fa8;
-  color: #ffffff;
-  box-shadow: 0 10px 24px rgba(11,111,168,.22);
-  border: 1px solid rgba(11,111,168,.22);
-}
-
-/* --- Ghost-knapper (PDF/Graf) ---
-   MÅL: ikke grå/bleg – de skal også være blå i look
-*/
-button.ghost{
-  box-shadow:none;
-  font-weight:800;
-}
-
-/* Dark: mørk/blåtonet fyld + blå kant + lys tekst */
-html[data-theme="dark"] button.ghost{
-  background: rgba(0,191,255,0.14);          /* <-- mere “blå fyld” */
-  border: 1px solid rgba(0,191,255,0.42);
-  color: #d7f0ff;
-}
-html[data-theme="dark"] button.ghost:hover{
-  background: rgba(0,191,255,0.20);
-}
-
-/* Light: lys blåtonet fyld + blå tekst (ser aktiv ud) */
-html[data-theme="light"] button.ghost{
-  background: rgba(11,111,168,0.12);         /* <-- blå fyld i light */
-  border: 1px solid rgba(11,111,168,0.30);
-  color: #0b6fa8;                             /* <-- blå tekst */
-}
-html[data-theme="light"] button.ghost:hover{
-  background: rgba(11,111,168,0.18);
-}
-
-/* Hvis ikonerne i knapperne ser “for lilla/grå” ud på nogle maskiner,
-   så gør vi dem bare en anelse mørkere i light mode */
-html[data-theme="light"] button.ghost img,
-html[data-theme="light"] button.ghost svg{
-  filter: saturate(1.2) contrast(1.1);
-}
-
-/* Tema-toggle knappen (ikon) */
-.icon-btn{
-  width:44px;
-  height:44px;
-  border-radius:12px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--card);
-  color:var(--txt);
-  border:1px solid var(--border);
-  box-shadow:0 6px 16px rgba(0,0,0,0.12);
-}
-.icon-btn:hover{ filter:brightness(1.05); }
-
-/* =========================================================
-   AFSNIT 02C – Blink (visuel feedback)
-   ========================================================= */
-.flash{
-  animation: flashPulse 380ms ease-out;
-}
-@keyframes flashPulse{
-  0%   { filter:brightness(1); }
-  45%  { filter:brightness(1.25); }
-  100% { filter:brightness(1); }
-}
-
-/* =========================================================
-   AFSNIT 02D – Graf-panel + controls
-   ========================================================= */
-.graphPanel{
-  width: min(1100px, 96vw);
-  margin: 18px auto 0;
-  padding: 14px 14px 10px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.14);
-}
-
-.graphHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:10px;
-}
-
-.graphControls{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin: 6px 0 12px;
-  color: var(--txt);
-}
-
-.graphControls label{
-  color: var(--muted);
-  font-weight:800;
-}
-
-.graphControls select{
+.btn{
   appearance:none;
-  padding:10px 38px 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--txt);
-  font-weight:800;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.10);
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position:
-    calc(100% - 18px) 50%,
-    calc(100% - 12px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-}
-
-.graphControls select:focus{
-  outline: none;
-  border-color: rgba(0,191,255,0.55);
-  box-shadow: 0 0 0 4px rgba(0,191,255,0.14);
-}
-
-#graphCanvas{
-  width: 100%;
-  height: auto;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: transparent;
-}
-
-/* =========================================================
-   AFSNIT 03 – Table
-   ========================================================= */
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:14px;
-  overflow:hidden;
-  margin:18px auto 0;
-}
-
-thead th{
-  background:linear-gradient(180deg,var(--thead1),var(--thead2));
-  color:#eaf6ff;
-  font-weight:900;
-  padding:12px 10px;
-  text-align:left;
-}
-
-tbody td{
-  padding:12px 10px;
-  border-top:1px solid var(--border);
-  vertical-align:middle;
-}
-
-td.left{ text-align:left; }
-
-.pos{ color:var(--green); font-weight:900; }
-.neg{ color:var(--red); font-weight:900; }
-.neu{ color:var(--muted); font-weight:900; }
-
-@media (max-width:720px){
-  .topbar{ align-items:flex-start; }
-  .topbar h1{ font-size:1.25rem; }
-
-  thead th:nth-child(5), tbody td:nth-child(5){ display:none; }
-  thead th:nth-child(6), tbody td:nth-child(6){ display:none; }
-}
-
-/* =========================================================
-   AFSNIT 05 – Totals
-   ========================================================= */
-.totals{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  gap:14px;
-  margin:18px 0 10px;
-}
-
-@media (max-width:700px){
-  .totals{ grid-template-columns: 1fr; }
-}
-
-.totals h3{
-  margin:0;
-  padding:16px 16px;
-  border-radius:16px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow:
-    0 14px 28px rgba(0,0,0,0.16),
-    0 2px 0 rgba(255,255,255,0.06) inset,
-    0 -2px 0 rgba(0,0,0,0.06) inset;
-  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
-
+  border: 1px solid var(--btnBorder);
+  background: var(--btnBg);
+  color: var(--btnText);
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor:pointer;
+  font-weight: 700;
+  box-shadow: 0 10px 26px rgba(0,0,0,.16);
   display:flex;
-  flex-direction:column;
   align-items:center;
-  justify-content:center;
+  gap: 8px;
+  transition: transform .08s ease, background .15s ease, filter .15s ease;
+}
+
+.btn img{ width:16px;height:16px; }
+
+.btn:hover{ background: var(--btnHover); }
+.btn:active{ transform: translateY(1px); }
+
+.btn-small{
+  padding: 8px 12px;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+/* STATUS LINE */
+.statusLine{
   text-align:center;
-  gap:10px;
-
-  font-size: 1.05rem;
-  font-weight: 900;
-  line-height: 1.25;
-  letter-spacing: .2px;
-}
-
-.totals h3:hover{
-  transform: translateY(-2px);
-  box-shadow:
-    0 18px 36px rgba(0,0,0,0.20),
-    0 2px 0 rgba(255,255,255,0.08) inset,
-    0 -2px 0 rgba(0,0,0,0.07) inset;
-  filter: brightness(1.02);
-}
-
-.totals h3 .value{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-
-  padding:10px 14px;
-  border-radius:999px;
-
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-
-  box-shadow:
-    0 10px 20px rgba(0,0,0,0.16),
-    0 2px 0 rgba(255,255,255,0.10) inset,
-    0 -2px 0 rgba(0,0,0,0.08) inset;
-
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-
-.totals h3.pos .value{
-  background: rgba(0, 200, 100, 0.16);
-  border-color: rgba(0, 200, 100, 0.38);
-  color: var(--green);
-}
-
-.totals h3.neg .value{
-  background: rgba(255, 70, 70, 0.14);
-  border-color: rgba(255, 70, 70, 0.38);
-  color: var(--red);
-}
-
-.totals h3.neu .value{
-  background: rgba(150,150,150,0.12);
-  border-color: rgba(150,150,150,0.28);
   color: var(--muted);
+  margin: 6px 0 14px;
+  font-size: 14px;
 }
 
-@media (max-width:480px){
-  .totals h3{
-    padding:14px 12px;
-    font-size:1rem;
-  }
-  .totals h3 .value{
-    font-size:1.2rem;
-    padding:9px 12px;
-  }
+/* STATS */
+.stats{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+
+@media (max-width: 880px){
+  .stats{ grid-template-columns: 1fr; }
+}
+
+.statBox{
+  background: var(--card);
+  border: 1px solid var(--cardBorder);
+  border-radius: 14px;
+  padding: 16px 16px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.18);
+}
+
+.statTitle{
+  font-weight: 800;
+  color: var(--muted);
+  text-align:center;
+}
+
+.statValue{
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 900;
+  text-align:center;
+}
+
+.gainTitle{
+  color: var(--gainText);
+}
+
+.gainValue{
+  display:inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--gainPillBg);
+  border: 1px solid var(--gainPillBorder);
+  color: var(--gainText);
+}
+
+/* Flash når der er opdateret */
+.flash{
+  animation: flashPulse .55s ease-out 1;
+}
+
+@keyframes flashPulse{
+  0%{ box-shadow: 0 0 0 0 var(--flash); }
+  100%{ box-shadow: 0 0 0 14px rgba(0,0,0,0); }
+}
+
+/* TABLE */
+.tableWrap{
+  margin-top: 10px;
+}
+
+.fundTable{
+  width:100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow:hidden;
+  border-radius: 14px;
+  border: 1px solid var(--cardBorder);
+  background: var(--card);
+  box-shadow: 0 14px 40px rgba(0,0,0,.18);
+}
+
+.fundTable thead th{
+  background: var(--tableHead);
+  color: var(--tableHeadText);
+  text-align:left;
+  padding: 12px 12px;
+  font-size: 15px;
+}
+
+.fundTable tbody td{
+  padding: 12px 12px;
+  border-top: 1px solid var(--rowBorder);
+  font-size: 14px;
+}
+
+.fundTable tbody tr:nth-child(odd){ background: var(--row); }
+.fundTable tbody tr:nth-child(even){ background: var(--rowAlt); }
+
+/* CHART */
+.chartSection{
+  margin-top: 14px;
+  padding: 14px 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--cardBorder);
+  box-shadow: 0 14px 40px rgba(0,0,0,.18);
+}
+
+.chartHeader{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.chartTitle{
+  font-weight: 900;
+  color: var(--text);
+}
+
+.chartLabel{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  margin: 10px 0 10px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.select{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--cardBorder);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.chartNote{
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
