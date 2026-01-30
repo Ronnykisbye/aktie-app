@@ -1,9 +1,9 @@
 /* =========================================================
    js/ui.js
    - Render totals + tabel
-   - FIX: Beregner selv DKK/% ud fra rå data (price/buyPrice/quantity)
-   - FIX: Bruger .totals markup (matcher css/components.css)
-   - FIX: “Blink” når der er opdateret (visuel feedback)
+   - Beregner DKK/% ud fra rå data (price/buyPrice/quantity)
+   - Blink når der er opdateret (visuel feedback)
+   - + FIX: eksportér renderChart så main.js kan importere den
    ========================================================= */
 
 /* =========================================================
@@ -69,7 +69,7 @@ function toDKK(price, currency, eurDkk) {
   if (c === "DKK") return p;
   if (c === "EUR") return p * Number(eurDkk || 0);
 
-  return p; // fallback hvis ukendt valuta
+  return p;
 }
 
 function clearEl(el) {
@@ -80,13 +80,12 @@ function clearEl(el) {
 function flash(el) {
   if (!el) return;
   el.classList.remove("flash");
-  // force reflow, så animation altid starter
-  void el.offsetWidth;
+  void el.offsetWidth; // force reflow
   el.classList.add("flash");
 }
 
 /* =========================================================
-   AFSNIT 02 – Markup der matcher CSS (.totals + h3 + .value)
+   AFSNIT 02 – Markup (matcher css/components.css)
    ========================================================= */
 function buildSkeleton(container, purchaseDateISO) {
   const dateText = (purchaseDateISO || "2025-09-10").slice(0, 10);
@@ -121,7 +120,7 @@ function buildSkeleton(container, purchaseDateISO) {
 }
 
 /* =========================================================
-   AFSNIT 03 – Render (beregner alt her)
+   AFSNIT 03 – Render portfolio (tabel + totals)
    ========================================================= */
 export function renderPortfolio({
   container,
@@ -141,7 +140,6 @@ export function renderPortfolio({
   const updatedDate = parseISO(updatedAt);
   const now = new Date();
 
-  // “Seneste handelsdag …”
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent =
       "Seneste handelsdag: " +
@@ -149,7 +147,6 @@ export function renderPortfolio({
       " • Opdateret automatisk af GitHub";
   }
 
-  // Status-linje
   if (statusTextEl) {
     if (updatedDate && !isSameLocalDate(updatedDate, now)) {
       const days = diffDaysLocal(updatedDate, now);
@@ -180,9 +177,6 @@ export function renderPortfolio({
     const buy = Number(it?.buyPrice ?? NaN);
 
     const currentDKK = toDKK(current, currency, eurDkk);
-   _toggle: {
-      // if currency is EUR and eurDkk missing, currentDKK becomes NaN – ok
-    }
     const buyDKK = toDKK(buy, currency, eurDkk);
 
     const investedDKK = Number.isFinite(qty) && Number.isFinite(buyDKK) ? qty * buyDKK : NaN;
@@ -216,18 +210,48 @@ export function renderPortfolio({
     rowsEl.appendChild(tr);
   }
 
-  // Totals
   if (elTotalValue) elTotalValue.textContent = `${formatNumberDKK(totalValueDKK)} DKK`;
   if (elTotalProfit) elTotalProfit.textContent = `${formatNumberDKK(totalProfitDKK)} DKK`;
 
-  // Farve-klassificering på profit-kortet
   if (elTotalProfitCard) {
     elTotalProfitCard.classList.remove("pos", "neg", "neu");
     elTotalProfitCard.classList.add(totalProfitDKK > 0 ? "pos" : totalProfitDKK < 0 ? "neg" : "neu");
   }
 
-  // Visuel feedback (blink)
   flash(totalsEl);
   flash(elTotalValueCard);
   flash(elTotalProfitCard);
 }
+
+/* =========================================================
+   AFSNIT 04 – FIX: renderChart (så graf-knap altid kan tegne noget)
+   - Vi har ingen historik i dit dataformat lige nu,
+     så vi tegner en stabil "snapshot"-graf (bar chart).
+   - Mode:
+     "profit"    = gevinst/tab (DKK) pr fond
+     "price_all" = nuværende kurs i DKK pr fond
+   ========================================================= */
+export function renderChart({ canvas, holdings, eurDkk, mode }) {
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Hvis ingen data
+  if (!list.length) {
+    ctx.font = "16px system-ui";
+    ctx.fillText("Ingen data at vise.", 20, 40);
+    return;
+  }
+
+  // data points
+  const labels = list.map((x) => String(x?.name || "Ukendt"));
+  const values = list.map((x) => {
+    const currenc
