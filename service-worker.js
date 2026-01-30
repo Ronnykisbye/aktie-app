@@ -1,30 +1,30 @@
 /* =========================================================
    service-worker.js
-   - Network-first for HTML/CSS/JS så opdateringer slår igennem
+   - Cache PWA-filer
+   - Network-first for datafiler (prices.json / fonde.csv)
+   - Bump CACHE_NAME ved ændringer, så vi ikke ser gamle filer
    ========================================================= */
 
-const CACHE_NAME = "aktieapp-v2026-01-30-1";
+const CACHE_NAME = "aktie-app-v4"; // <-- BUMPET
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
+  "./icon.svg",
   "./css/colors.css",
   "./css/components.css",
   "./css/style.css",
   "./js/main.js",
   "./js/api.js",
   "./js/ui.js",
-  "./img/icon.png",
-  "./img/refresh.png",
-  "./img/pdf.png",
-  "./img/chart.png",
+  "./js/purchase-prices.js",
+  "./prices.json",
+  "./fonde.csv",
   "./manifest.webmanifest"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
   self.skipWaiting();
 });
 
@@ -38,22 +38,24 @@ self.addEventListener("activate", (event) => {
 });
 
 async function networkFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
   try {
     const fresh = await fetch(request, { cache: "no-store" });
+    const cache = await caches.open(CACHE_NAME);
     cache.put(request, fresh.clone());
     return fresh;
-  } catch (e) {
-    const cached = await cache.match(request);
-    return cached || Response.error();
+  } catch (err) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw err;
   }
 }
 
 async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
+  const cached = await caches.match(request);
   if (cached) return cached;
+
   const fresh = await fetch(request);
+  const cache = await caches.open(CACHE_NAME);
   cache.put(request, fresh.clone());
   return fresh;
 }
@@ -61,17 +63,12 @@ async function cacheFirst(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Kun vores eget site
-  if (url.origin !== location.origin) return;
-
-  const path = url.pathname;
-
-  // Network-first for HTML/CSS/JS (så farver og knapper opdaterer)
-  if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
+  // Network-first for datafiler (altid friske)
+  if (url.pathname.endsWith("/prices.json") || url.pathname.endsWith("/fonde.csv")) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // Billeder: cache-first er fint
+  // Default: cache-first for resten
   event.respondWith(cacheFirst(event.request));
 });
