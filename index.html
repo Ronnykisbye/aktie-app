@@ -1,19 +1,17 @@
 <!DOCTYPE html>
-<html lang="da" data-theme="dark" data-build="2026-01-29-aktieapp">
+<html lang="da" data-theme="dark" data-build="2026-01-30">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>Aktie App</title>
 
-  <!-- Ikon -->
-  <link rel="icon" href="icon.svg" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <!-- Ikoner (du har icon-192.png + icon-512.png i repo-roden) -->
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
 
-  <!-- PWA -->
+  <!-- PWA (du har manifest.json i repo-roden) -->
   <meta name="theme-color" content="#0a5ea8" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="manifest" href="manifest.json" />
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/colors.css" />
@@ -23,6 +21,7 @@
 
 <body>
   <div class="app">
+
     <header class="header">
       <div class="title">
         <span class="logo">📈</span>
@@ -55,7 +54,7 @@
       <div class="graphControls">
         <label for="graphMode">Vælg graf:</label>
         <select id="graphMode">
-          <option value="profit">Gevinst-udvikling</option>
+          <option value="profit">Gevinst/tab</option>
           <option value="price_all">Nuværende kurs</option>
         </select>
       </div>
@@ -63,6 +62,7 @@
       <canvas id="graphCanvas" width="900" height="300"></canvas>
     </section>
 
+    <!-- UI renderes her (inkl. totals og tabel) -->
     <div id="table"></div>
   </div>
 
@@ -77,7 +77,7 @@
     document.getElementById("pdf")?.addEventListener("click", () => window.print());
   </script>
 
-  <!-- Service Worker -->
+  <!-- Service Worker (GitHub Pages path er /aktie-app/...) -->
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
