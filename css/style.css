@@ -287,3 +287,28 @@ html[data-theme="dark"] .statValue{
 html[data-theme="dark"] .gainValue{
   color: rgba(18, 209, 142, 0.98) !important;
 }
+/* =========================================================
+   AFSNIT 100 – LÅS: Læsbarhed i DARK mode (tabel + graf UI)
+   ========================================================= */
+
+/* Dark mode: tabelrækker skal være læsbare */
+html[data-theme="dark"] .fundTable tbody td{
+  color: rgba(255,255,255,0.88) !important;
+}
+
+/* Dark mode: fond-navne må gerne være ekstra tydelige */
+html[data-theme="dark"] .fundTable tbody td.left{
+  color: rgba(255,255,255,0.94) !important;
+}
+
+/* Dark mode: graf-tekster skal være læsbare */
+html[data-theme="dark"] .chartLabel,
+html[data-theme="dark"] .chartTitle,
+html[data-theme="dark"] .chartNote{
+  color: rgba(255,255,255,0.88) !important;
+}
+
+/* Dark mode: dropdown-tekst */
+html[data-theme="dark"] .select{
+  color: rgba(255,255,255,0.92) !important;
+}
