@@ -1,91 +1,101 @@
-/*
-=========================================================
-css/style.css
-FORMÅL:
-- Basis layout (body/app/header) så alt står stabilt
-- INGEN override af knapfarver (det styres i components.css)
-- Holder “app-look” i både lys og mørk
-=========================================================
-*/
+/* =========================================================
+   style.css
+   Formål:
+   - Sidste lag CSS (final overrides)
+   - Må IKKE importere gamle styles (fx app.css), ellers vinder de over components.css
+   ========================================================= */
 
 /* =========================================================
-   AFSNIT 01 – Basis (body + font)
+   AFSNIT 01 – Layout: container + topbar
    ========================================================= */
-html, body{
-  height: 100%;
+:root {
+  --layout-max-width: 1120px;
 }
 
-body{
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--txt);
+/* Holder hele appen pænt i bredden */
+.app,
+#app,
+main {
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 16px;
 }
 
-/* =========================================================
-   AFSNIT 02 – App wrapper
-   ========================================================= */
-.app{
-  padding: 18px 0 36px;
-}
-
-/* =========================================================
-   AFSNIT 03 – Header (titel + theme-knap)
-   ========================================================= */
-.header{
+/* Topbar skal føles “app-agtig” og stabil */
+.topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 6px auto 10px;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  margin-bottom: 8px;
 }
 
-.title{
+/* Theme toggle må gerne ligge til højre – men skal være klikbar */
+#themeToggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 10;
+}
+
+/* =========================================================
+   AFSNIT 02 – Knapper: fix ghost-knapper i lys/mørk
+   (Her “låser” vi udseendet så gammel CSS ikke kan ødelægge det)
+   ========================================================= */
+
+/* Fælles: sørg for at ghost-knapper faktisk får en “knap-baggrund” */
+button.btn.ghost {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-border);
+}
+
+/* Lys mode: lidt “blød” men tydelig */
+html[data-theme="light"] button.btn.ghost {
+  background: #e8f4ff;
+  color: #08324a;
+  border-color: #b7dcff;
+}
+
+/* Mørk mode: alle knapper skal være blå (som du ønskede) */
+html[data-theme="dark"] button.btn.ghost {
+  background: #0b6aa0;
+  color: #06131b;
+  border-color: #1ea7ff;
+}
+
+/* Gør også PDF/Graf ens med Opdater, uanset hvad andre css prøver */
+html[data-theme="dark"] #pdf.btn.ghost,
+html[data-theme="dark"] #graph.btn.ghost {
+  background: #0b6aa0;
+  color: #06131b;
+  border-color: #1ea7ff;
+}
+
+/* Hover/active – så det føles som en rigtig app */
+button.btn.ghost:hover {
+  filter: brightness(1.04);
+}
+button.btn.ghost:active {
+  transform: translateY(1px);
+}
+
+/* =========================================================
+   AFSNIT 03 – Små stabilitets-fix (så ting ikke “flytter sig”)
+   ========================================================= */
+.status-line,
+#statusText {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* Sørg for at knapperne ikke “hopper” i lys/mørk */
+.actions,
+.button-row,
+.controls {
   display: flex;
-  align-items: center;
+  justify-content: center;
   gap: 10px;
-  min-width: 0;
+  flex-wrap: wrap;
 }
-
-.logo{
-  font-size: 22px;
-  line-height: 1;
-}
-
-/* Sørger for at title ikke skubber theme-knappen ud af sync */
-.title h1{
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* =========================================================
-   AFSNIT 04 – Små tekstting
-   ========================================================= */
-.hint{
-  text-align: center;
-}
-
-/* =========================================================
-   AFSNIT 05 – Graf (canvas baggrund + læsbarhed)
-   Bemærk: Selve graf-farver styres i JS.
-   Her sikrer vi bare at canvas har “kort”-look
-   ========================================================= */
-#graphCanvas{
-  display: block;
-  width: 100%;
-  height: auto;
-  background: rgba(255,255,255,0.02);
-  border-radius: 12px;
-}
-
-/* Light mode: canvas får en smule mere kontrast */
-html[data-theme="light"] #graphCanvas{
-  background: rgba(0,0,0,0.02);
-}
-
-/* =========================================================
-   AFSNIT 06 – SIKKERHED: Overstyr IKKE knapfarver her
-   (Knapper styres i components.css)
-   ========================================================= */
-/* (Bevidst tomt) */
