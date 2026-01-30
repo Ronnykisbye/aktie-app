@@ -1,15 +1,10 @@
 /* =========================================================
    js/ui.js (LÅST til index.html DOM)
-   - Udfylder eksisterende felter (ingen HTML-injection)
-   - Stats: #totalValue / #totalGain
-   - Tabel: #fundRows
-   - Status: #status
-   - Graf: beløb på søjler + læsbar i light/dark
+   - Udfylder #totalValue, #totalGain, #fundRows, #status
+   - Ingen HTML-injection
+   - Graf: beløb på søjler + læsbar tekst i light/dark
    ========================================================= */
 
-/* =========================
-   AFSNIT 01 – Helpers
-   ========================= */
 function parseISO(s) {
   if (!s) return null;
   const d = new Date(s);
@@ -44,13 +39,12 @@ function toDKK(price, currency, eurDkk) {
   const c = String(currency || "DKK").toUpperCase();
   if (c === "DKK") return p;
   if (c === "EUR") return p * Number(eurDkk || 0);
-  return p; // fallback
+  return p;
 }
 
 function flash(el) {
   if (!el) return;
   el.classList.remove("flash");
-  // force reflow
   void el.offsetWidth;
   el.classList.add("flash");
 }
@@ -59,9 +53,6 @@ function theme() {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
-/* =========================
-   AFSNIT 02 – Render (stats + tabel + status)
-   ========================= */
 export function renderPortfolio({
   statusEl,
   totalValueEl,
@@ -76,11 +67,9 @@ export function renderPortfolio({
   const list = Array.isArray(holdings?.items) ? holdings.items : [];
   const updatedAt = holdings?.updatedAt || holdings?.updatedAtISO || null;
 
-  // --- totals ---
   let totalValueDKK = 0;
   let totalGainDKK = 0;
 
-  // --- tabel ---
   if (rowsEl) rowsEl.innerHTML = "";
 
   for (const it of list) {
@@ -126,35 +115,26 @@ export function renderPortfolio({
     }
   }
 
-  // totals ud
   if (totalValueEl) totalValueEl.textContent = `${fmtDKK(totalValueDKK)} DKK`;
   if (totalGainEl) totalGainEl.textContent = `${fmtDKK(totalGainDKK)} DKK`;
 
-  // farve på gain tal (via class på selve værdien)
   if (totalGainEl) {
     totalGainEl.classList.remove("pos", "neg", "neu");
     totalGainEl.classList.add(totalGainDKK > 0 ? "pos" : totalGainDKK < 0 ? "neg" : "neu");
   }
 
-  // status (med opdater tidspunkt)
   const refreshedLocal = fmtLocalDateTime(refreshedAtISO);
   const tradeLocal = fmtLocalDateTime(updatedAt);
 
   if (statusEl) {
-    statusEl.textContent = `OK — data vist.  •  Seneste handelsdag: ${tradeLocal}  •  Opdateret af GitHub  •  Sidst opdateret: ${refreshedLocal}`;
+    statusEl.textContent =
+      `OK — data vist.  •  Seneste handelsdag: ${tradeLocal}  •  Opdateret af GitHub  •  Sidst opdateret: ${refreshedLocal}`;
   }
 
-  // blink på bokse som “signal”
   flash(boxTotalEl);
   flash(boxGainEl);
 }
 
-/* =========================
-   AFSNIT 03 – Graf (beløb på søjler)
-   mode:
-   - "gain"  : gevinst/tab DKK pr fond
-   - "price" : nuværende kurs DKK pr fond
-   ========================= */
 export function renderChart({ canvas, holdings, eurDkk, mode }) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -190,13 +170,10 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
     const buyDKK = toDKK(buy, currency, eurDkk);
 
     if (mode === "gain") {
-      const g =
-        Number.isFinite(qty) && Number.isFinite(priceDKK) && Number.isFinite(buyDKK)
-          ? qty * (priceDKK - buyDKK)
-          : 0;
-      return g;
+      return Number.isFinite(qty) && Number.isFinite(priceDKK) && Number.isFinite(buyDKK)
+        ? qty * (priceDKK - buyDKK)
+        : 0;
     }
-
     return Number.isFinite(priceDKK) ? priceDKK : 0;
   });
 
@@ -210,7 +187,6 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
 
   const yOf = (v) => padT + (1 - (v - minV) / range) * innerH;
 
-  // akser
   ctx.lineWidth = 1;
   ctx.strokeStyle = axis;
   ctx.beginPath();
@@ -219,7 +195,6 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
   ctx.lineTo(padL + innerW, padT + innerH);
   ctx.stroke();
 
-  // zero-linje
   if (minV < 0 && maxV > 0) {
     const y0 = yOf(0);
     ctx.strokeStyle = zero;
@@ -229,17 +204,15 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
     ctx.stroke();
   }
 
-  const n = values.length;
-  const gap = 14;
-  const barW = Math.max(18, (innerW - gap * (n - 1)) / n);
-
-  // titel
   ctx.textAlign = "left";
   ctx.fillStyle = txtStrong;
   ctx.font = "14px system-ui";
   ctx.fillText(mode === "gain" ? "Gevinst/tab (DKK) pr fond" : "Nuværende kurs (DKK) pr fond", padL, 18);
 
-  // bars
+  const n = values.length;
+  const gap = 14;
+  const barW = Math.max(18, (innerW - gap * (n - 1)) / n);
+
   for (let i = 0; i < n; i++) {
     const v = values[i];
     const x = padL + i * (barW + gap);
@@ -249,28 +222,20 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
     const top = Math.min(y, y0);
     const height = Math.max(2, Math.abs(y0 - y));
 
-    // bar farve
-    if (mode === "gain") {
-      ctx.fillStyle =
-        v > 0 ? "rgba(18,209,142,0.88)" :
-        v < 0 ? "rgba(255,90,95,0.88)" :
-        "rgba(0,191,255,0.78)";
-    } else {
-      ctx.fillStyle = "rgba(0,191,255,0.78)";
-    }
+    ctx.fillStyle =
+      mode === "gain"
+        ? (v > 0 ? "rgba(18,209,142,0.88)" : v < 0 ? "rgba(255,90,95,0.88)" : "rgba(0,191,255,0.78)")
+        : "rgba(0,191,255,0.78)";
 
     ctx.fillRect(x, top, barW, height);
 
-    // beløb på søjle (hvid på baren)
+    // beløb på bar (hvid)
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,255,255,0.92)";
     ctx.font = "12px system-ui";
+    ctx.fillText(`${fmtDKK(v)} DKK`, x + barW / 2, top + 16);
 
-    const valText = `${fmtDKK(v)} DKK`;
-    const textY = top + 16; // inde i baren
-    ctx.fillText(valText, x + barW / 2, textY);
-
-    // labels (skrå)
+    // label
     ctx.fillStyle = txtMuted;
     ctx.font = "12px system-ui";
     ctx.save();
