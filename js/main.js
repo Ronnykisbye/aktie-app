@@ -1,51 +1,69 @@
 /* =========================================================
-   js/main.js
+   js/main.js  (BIG)
 
    Formål:
-   - Orkestrerer indlæsning/opdatering
-   - Renderer UI via ui.js
-   - FIX: Stabil graf (import/export matcher 100%)
-   - FIX: Stabil theme toggle (lokal storage + data-theme)
-
-   VIGTIGT:
-   - Små kontrollerede ændringer
+   - Stabil opdatering + render
+   - Stabil tema-toggle (data-theme + localStorage)
+   - Stabil graf-panel (åbn/luk + redraw)
+   - Korrekt import af purchase-prices fra /data/
    ========================================================= */
 
+/* =========================
+   AFSNIT 01 – Imports
+   ========================= */
 import { getLatestHoldingsPrices, getEURDKK } from "./api.js";
 import { renderPortfolio, renderChart } from "./ui.js";
-import { getPurchaseTotalDKKByName } from "./purchase-prices.js";
+import { getPurchaseTotalDKKByName } from "../data/purchase-prices.js";
 
-/* =========================================================
-   AFSNIT 01 – DOM refs
-   ========================================================= */
+/* =========================
+   AFSNIT 02 – DOM refs
+   ========================= */
 const container = document.getElementById("table");
 
 const statusTextEl = document.getElementById("statusText");
 const lastUpdatedEl = document.getElementById("lastUpdated");
 
 const btnRefresh = document.getElementById("refresh");
+const btnPDF = document.getElementById("pdf");
+const btnGraph = document.getElementById("graph");
 const btnTheme = document.getElementById("themeToggle");
 
-const btnGraph = document.getElementById("graph");
 const graphPanel = document.getElementById("graphPanel");
-const graphClose = document.getElementById("graphClose");
-const graphMode = document.getElementById("graphMode");
 const graphCanvas = document.getElementById("graphCanvas");
+const graphMode = document.getElementById("graphMode");
+const graphClose = document.getElementById("graphClose");
 
-/* =========================================================
-   AFSNIT 02 – Konfiguration
-   ========================================================= */
+/* =========================
+   AFSNIT 03 – Konfiguration
+   ========================= */
 const PURCHASE_DATE_ISO = "2025-09-10";
 const THEME_KEY = "aktieapp-theme";
 
-/* =========================================================
-   AFSNIT 03 – Tema (stabil)
-   ========================================================= */
+/* =========================
+   AFSNIT 04 – UI helpers
+   ========================= */
+function setStatus(text) {
+  if (statusTextEl) statusTextEl.textContent = text;
+}
+
+function flashRender(el) {
+  if (!el) return;
+  el.classList.remove("flash");
+  // force reflow (så blink kan trigges igen)
+  // eslint-disable-next-line no-unused-expressions
+  el.offsetWidth;
+  el.classList.add("flash");
+}
+
+/* =========================
+   AFSNIT 05 – Tema (stabil)
+   ========================= */
 function setTheme(theme) {
   const t = theme === "light" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", t);
   localStorage.setItem(THEME_KEY, t);
 
+  // ikon på knap
   if (btnTheme) btnTheme.textContent = t === "dark" ? "🌙" : "☀️";
 }
 
@@ -55,28 +73,14 @@ function initTheme() {
     setTheme(saved);
     return;
   }
-  // fallback: behold det der står i HTML
+
   const htmlTheme = document.documentElement.getAttribute("data-theme") || "dark";
   setTheme(htmlTheme);
 }
 
-/* =========================================================
-   AFSNIT 04 – Blink helper
-   ========================================================= */
-function flashRender(el) {
-  if (!el) return;
-  el.classList.remove("flash");
-  void el.offsetWidth;
-  el.classList.add("flash");
-}
-
-function setStatus(text) {
-  if (statusTextEl) statusTextEl.textContent = text;
-}
-
-/* =========================================================
-   AFSNIT 05 – Purchase totals -> buyPrice pr stk (valuta)
-   ========================================================= */
+/* =========================
+   AFSNIT 06 – Køb (TOTAL DKK) -> buyPrice pr stk i fondens valuta
+   ========================= */
 function applyPurchaseTotalsToItems(items, eurDkk) {
   return items.map((it) => {
     const name = it?.name || "";
@@ -85,41 +89,51 @@ function applyPurchaseTotalsToItems(items, eurDkk) {
 
     const purchaseTotalDKK = getPurchaseTotalDKKByName(name);
 
+    // hvis vi ikke har purchase total eller qty=0 -> behold den buyPrice der evt. kommer fra CSV
     if (!purchaseTotalDKK || !qty) return it;
 
     const buyDKKPerUnit = purchaseTotalDKK / qty;
 
+    // EUR-fond: konverter DKK -> EUR pr stk (så profit% bliver korrekt)
     const buyPriceInFundCurrency =
       currency === "EUR" && eurDkk ? buyDKKPerUnit / eurDkk : buyDKKPerUnit;
 
-    return { ...it, buyPrice: Number(buyPriceInFundCurrency) };
+    return {
+      ...it,
+      buyPrice: Number(buyPriceInFundCurrency)
+    };
   });
 }
 
-/* =========================================================
-   AFSNIT 06 – Data state (så graf kan gen-tegnes)
-   ========================================================= */
+/* =========================
+   AFSNIT 07 – State (så graf kan redraw)
+   ========================= */
 let lastHoldings = null;
 let lastEurDkk = null;
 
-/* =========================================================
-   AFSNIT 07 – Load/render
-   ========================================================= */
+/* =========================
+   AFSNIT 08 – Load + render
+   ========================= */
 async function loadAndRender({ reason = "init" } = {}) {
   try {
     setStatus(reason === "refresh" ? "Henter nye data..." : "Indlæser data...");
 
+    // 1) EUR/DKK
     const eurDkk = await getEURDKK();
+
+    // 2) Holdings + seneste priser
     const holdings = await getLatestHoldingsPrices();
 
+    // 3) Patch buyPrice baseret på purchase totals
     const items = Array.isArray(holdings?.items) ? holdings.items : [];
     const patchedItems = applyPurchaseTotalsToItems(items, eurDkk);
-
     const patchedHoldings = { ...holdings, items: patchedItems };
 
+    // gem state
     lastHoldings = patchedHoldings;
     lastEurDkk = eurDkk;
 
+    // 4) Render tabel + totals
     renderPortfolio({
       container,
       statusTextEl,
@@ -132,7 +146,7 @@ async function loadAndRender({ reason = "init" } = {}) {
     flashRender(container);
     setStatus("OK — data vist.");
 
-    // hvis grafpanel er åbent, så tegn igen
+    // 5) Hvis graf-panel er åbent: redraw
     if (graphPanel && !graphPanel.hidden) {
       const mode = graphMode?.value || "profit";
       renderChart({ canvas: graphCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode });
@@ -143,18 +157,19 @@ async function loadAndRender({ reason = "init" } = {}) {
   }
 }
 
-/* =========================================================
-   AFSNIT 08 – Graf UI (stabil)
-   ========================================================= */
+/* =========================
+   AFSNIT 09 – Graf UI (stabil)
+   ========================= */
 function openGraph() {
   if (!graphPanel) return;
   graphPanel.hidden = false;
 
-  // hvis der ikke er valgt noget, så sæt default
+  // default valg
   if (graphMode && (!graphMode.value || graphMode.value === "")) {
     graphMode.value = "profit";
   }
 
+  // tegn hvis vi har data
   if (lastHoldings) {
     renderChart({
       canvas: graphCanvas,
@@ -163,7 +178,7 @@ function openGraph() {
       mode: graphMode?.value || "profit"
     });
   } else {
-    // hvis data ikke er loaded endnu, så hent først
+    // ellers hent data først
     loadAndRender({ reason: "init" }).then(() => {
       renderChart({
         canvas: graphCanvas,
@@ -180,9 +195,9 @@ function closeGraph() {
   graphPanel.hidden = true;
 }
 
-/* =========================================================
-   AFSNIT 09 – Events
-   ========================================================= */
+/* =========================
+   AFSNIT 10 – Events
+   ========================= */
 initTheme();
 
 btnTheme?.addEventListener("click", () => {
@@ -192,15 +207,22 @@ btnTheme?.addEventListener("click", () => {
 
 btnRefresh?.addEventListener("click", () => loadAndRender({ reason: "refresh" }));
 
+btnPDF?.addEventListener("click", () => window.print());
+
 btnGraph?.addEventListener("click", openGraph);
 graphClose?.addEventListener("click", closeGraph);
 
 graphMode?.addEventListener("change", () => {
   if (!lastHoldings) return;
-  renderChart({ canvas: graphCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: graphMode.value });
+  renderChart({
+    canvas: graphCanvas,
+    holdings: lastHoldings,
+    eurDkk: lastEurDkk,
+    mode: graphMode.value
+  });
 });
 
-/* =========================================================
-   AFSNIT 10 – Start
-   ========================================================= */
+/* =========================
+   AFSNIT 11 – Start
+   ========================= */
 loadAndRender({ reason: "init" });
