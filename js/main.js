@@ -4,10 +4,12 @@
    - Tema-toggle stabil (data-theme + localStorage)
    - Opdater -> henter data -> render
    - Graf -> åbner/lukker + redraw ved tema/resize
+   - VIGTIGT: KORREKT gevinst/% siden 10/09/2025 via purchase-prices.js (TOTAL investeret pr fond)
    ========================================================= */
 
 import { getLatestHoldingsPrices, getEURDKK } from "./api.js";
 import { renderPortfolio, renderChart } from "./ui.js";
+import { getPurchaseTotalDKKByName } from "../data/purchase-prices.js"; // <-- hvis filen ligger i /js: brug "./purchase-prices.js"
 
 /* =========================
    AFSNIT 01 – DOM refs (MATCHER index.html)
@@ -68,7 +70,52 @@ function ensureCanvasSize() {
 }
 
 /* =========================
-   AFSNIT 04 – Load + render
+   AFSNIT 04 – KORREKT køb/indskud (TOTAL) -> pr. unit buyPrice
+
+   Hvorfor?
+   - UI beregner gevinst som: qty * (pris - køb) i samme valuta
+   - purchase-prices.js er TOTALT investeret (DKK) pr fond
+   - Derfor omsætter vi TOTAL(DKK) til "køb pr. unit" (i fondens valuta),
+     så UI kan regne korrekt uden at ændre ui.js
+   ========================= */
+function applyPurchaseTotals({ holdings, eurDkk }) {
+  const list = Array.isArray(holdings?.items) ? holdings.items : [];
+  const rate = Number(eurDkk);
+
+  if (!Number.isFinite(rate) || rate <= 0) return holdings;
+
+  const items = list.map((it) => {
+    const name = String(it?.name || "").trim();
+    const currency = String(it?.currency || "DKK").toUpperCase();
+    const qty = Number(it?.quantity ?? 0);
+
+    const purchaseTotalDKK = getPurchaseTotalDKKByName(name);
+
+    // Kun hvis vi har et meningsfuldt TOTAL-beløb + qty
+    if (!(purchaseTotalDKK > 0) || !(qty > 0)) return it;
+
+    // ønsket: buyDKK pr unit = totalDKK / qty
+    const buyDKKPerUnit = purchaseTotalDKK / qty;
+
+    // UI konverterer buyPrice til DKK hvis currency=EUR via * eurDkk
+    // => buyPrice i EUR skal være: buyDKKPerUnit / eurDkk
+    const buyPrice =
+      currency === "EUR"
+        ? buyDKKPerUnit / rate
+        : buyDKKPerUnit;
+
+    return {
+      ...it,
+      buyPrice,                 // pr unit i samme valuta som 'currency'
+      _purchaseTotalDKK: purchaseTotalDKK  // debug (bruges ikke i UI)
+    };
+  });
+
+  return { ...holdings, items };
+}
+
+/* =========================
+   AFSNIT 05 – Load + render
    ========================= */
 async function loadAndRender({ reason = "init" } = {}) {
   try {
@@ -77,7 +124,10 @@ async function loadAndRender({ reason = "init" } = {}) {
     const refreshedAtISO = new Date().toISOString();
 
     const eurDkk = await getEURDKK();
-    const holdings = await getLatestHoldingsPrices();
+    const holdingsRaw = await getLatestHoldingsPrices();
+
+    // LÅS korrekt gevinst/% (TOTAL investeret pr fond)
+    const holdings = applyPurchaseTotals({ holdings: holdingsRaw, eurDkk });
 
     lastHoldings = holdings;
     lastEurDkk = eurDkk;
@@ -110,7 +160,7 @@ async function loadAndRender({ reason = "init" } = {}) {
 }
 
 /* =========================
-   AFSNIT 05 – Graf UI
+   AFSNIT 06 – Graf UI
    ========================= */
 function openChart() {
   if (!chartSection) return;
@@ -130,7 +180,7 @@ function closeChart() {
 }
 
 /* =========================
-   AFSNIT 06 – Events
+   AFSNIT 07 – Events
    ========================= */
 initTheme();
 
@@ -165,6 +215,6 @@ window.addEventListener("resize", () => {
 });
 
 /* =========================
-   AFSNIT 07 – Start
+   AFSNIT 08 – Start
    ========================= */
 loadAndRender({ reason: "init" });
