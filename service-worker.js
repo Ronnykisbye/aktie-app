@@ -1,106 +1,75 @@
 /* =========================================================
-   AFSNIT 01 – Konstanter
+   service-worker.js
+   Formål:
+   - Cache PWA-filer
+   - Network-first for data/prices.json (så “Opdater” får friske tal)
+   - Cache-version bump ved ændringer (så CSS/JS ikke hænger fast)
    ========================================================= */
-const CACHE_NAME = "aktie-app-v2";
 
-/* =========================================================
-   AFSNIT 02 – Install / Activate
-   ========================================================= */
+const CACHE_NAME = "aktie-app-v3"; // <- BUMP version når vi ændrer CSS/JS
+
+const CORE_ASSETS = [
+  "./",
+  "./index.html",
+  "./css/colors.css",
+  "./css/components.css",
+  "./css/style.css",
+  "./js/main.js",
+  "./js/api.js",
+  "./js/ui.js",
+  "./data/prices.json",
+  "./data/fonde.csv",
+  "./manifest.webmanifest"
+].map((p) => p.replace(/^\.\/\//, "./"));
+
 self.addEventListener("install", (event) => {
-  // Brug den nye SW med det samme
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    (async () => {
-      // Slet gamle caches (v1 osv.)
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)));
-
-      // Tag kontrol over klienten
-      await self.clients.claim();
-    })()
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
+    )
   );
+  self.clients.claim();
 });
 
-/* =========================================================
-   AFSNIT 03 – Helpers
-   ========================================================= */
-function isHttpGet(request) {
+async function networkFirst(request) {
   try {
-    const url = new URL(request.url);
-    return (url.protocol === "http:" || url.protocol === "https:") && request.method === "GET";
-  } catch {
-    return false;
+    const fresh = await fetch(request, { cache: "no-store" });
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(request, fresh.clone());
+    return fresh;
+  } catch (err) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw err;
   }
 }
 
-function isDataFile(url) {
-  const p = url.pathname.toLowerCase();
-  // Data må ALDRIG caches (så Opdater altid får frisk data)
-  return p.endsWith(".json") || p.endsWith(".csv") || p.includes("prices");
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  const fresh = await fetch(request);
+  const cache = await caches.open(CACHE_NAME);
+  cache.put(request, fresh.clone());
+  return fresh;
 }
 
-function isAppAsset(url) {
-  const p = url.pathname.toLowerCase();
-  // App-assets: vi vil helst have dem friske (network-first)
-  return p.endsWith(".js") || p.endsWith(".css") || p.endsWith(".html") || p.endsWith("/") || p === "/aktie-app";
-}
-
-/* =========================================================
-   AFSNIT 04 – Fetch strategi
-   - DATA (json/csv/prices): NETWORK ONLY (ingen cache)
-   - APP-ASSETS (html/js/css): NETWORK FIRST (cache som fallback)
-   - ANDRE: CACHE FIRST (ok til fx ikoner)
-   ========================================================= */
 self.addEventListener("fetch", (event) => {
-  const req = event.request;
+  const url = new URL(event.request.url);
 
-  if (!isHttpGet(req)) return;
-
-  const url = new URL(req.url);
-
-  // 1) DATA: aldrig cache
-  if (isDataFile(url)) {
-    event.respondWith(fetch(req, { cache: "no-store" }));
+  // Network-first for priser (så “Opdater” får det nyeste)
+  if (url.pathname.endsWith("/data/prices.json")) {
+    event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // 2) APP-ASSETS: network-first (så du får nyeste app uden Ctrl+Shift+R)
-  if (isAppAsset(url)) {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(CACHE_NAME);
-        try {
-          const fresh = await fetch(req);
-          if (fresh && fresh.ok) {
-            try { await cache.put(req, fresh.clone()); } catch {}
-          }
-          return fresh;
-        } catch {
-          // Hvis offline/fejl: fallback til cache
-          const cached = await cache.match(req);
-          if (cached) return cached;
-          throw new Error("Offline og ingen cache til asset");
-        }
-      })()
-    );
-    return;
-  }
-
-  // 3) Resten: cache-first
-  event.respondWith(
-    (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(req);
-      if (cached) return cached;
-
-      const fresh = await fetch(req);
-      if (fresh && fresh.ok) {
-        try { await cache.put(req, fresh.clone()); } catch {}
-      }
-      return fresh;
-    })()
-  );
+  // Default: cache-first for resten
+  event.respondWith(cacheFirst(event.request));
 });
