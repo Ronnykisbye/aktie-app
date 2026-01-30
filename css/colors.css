@@ -1,37 +1,66 @@
-/*
-AFSNIT 01 - Farver
-*/
+/* =========================================================
+   colors.css
+   - Alle farver og tema-variabler ligger her (lys/mørk)
+   ========================================================= */
+
 :root{
-  --bg:#0d0f14;
-  --card:#181c23;
-  --txt:#e6eef7;
-  --muted:#9fb0c3;
-  --brand:#00bfff;
-  --btnText:#00121d;
-  --green:#38d18e;
-  --red:#ff5a6e;
-  --equal:#b7c4d6;
-  --border:#233042;
-  --shadow: rgba(0,191,255,.18);
-  --thead1:#0f6ea8;
-  --thead2:#0a5a8a;
+  --bg: #f6fbff;
+  --text: #0b2230;
+  --muted: #4d6a7a;
+
+  --card: #ffffff;
+  --cardBorder: #d6e3ef;
+
+  --tableHead: #0a6aa3;
+  --tableHeadText: #ffffff;
+
+  --row: #ffffff;
+  --rowAlt: #f2f8ff;
+  --rowBorder: #d6e3ef;
+
+  --accent: #00b7ff;
+
+  /* Knapper */
+  --btnBg: #0a7ec1;
+  --btnText: #ffffff;
+  --btnHover: #096aa2;
+  --btnBorder: rgba(0,0,0,.10);
+
+  /* Gain */
+  --gainText: #0b7a3a;
+  --gainPillBg: #d9f7e6;
+  --gainPillBorder: #7fe0aa;
+
+  /* Flash */
+  --flash: rgba(0, 183, 255, .35);
 }
 
-/*
-AFSNIT 02 - Light theme (aktiveres via <html data-theme="light">)
-*/
-html[data-theme="light"]{
-  --bg:#f6f8fb;
-  --card:#ffffff;
-  --txt:#0c1722;
-  --muted:#4d657a;
-  --brand:#0077b6;
-  --btnText:#ffffff;
-  --green:#0f8a52;
-  --red:#cc1f3a;
-  --equal:#3a5164;
-  --border:#d7e2ec;
-  --shadow: rgba(0,119,182,.16);
-  --thead1:#0b6fa8;
-  --thead2:#085e8f;
+html[data-theme="dark"]{
+  --bg: #0b0f14;
+  --text: #e8f3ff;
+  --muted: #b6c7d6;
+
+  --card: #141b24;
+  --cardBorder: rgba(255,255,255,.08);
+
+  --tableHead: #0a6aa3;
+  --tableHeadText: #ffffff;
+
+  --row: #141b24;
+  --rowAlt: #111821;
+  --rowBorder: rgba(255,255,255,.08);
+
+  --accent: #00b7ff;
+
+  /* Knapper: du bad om BLÅ i dark mode */
+  --btnBg: #00b7ff;
+  --btnText: #03141d;
+  --btnHover: #00a6e6;
+  --btnBorder: rgba(0,0,0,.25);
+
+  --gainText: #37f28f;
+  --gainPillBg: rgba(55,242,143,.14);
+  --gainPillBorder: rgba(55,242,143,.35);
+
+  --flash: rgba(0, 183, 255, .28);
 }
