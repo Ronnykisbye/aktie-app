@@ -37,7 +37,28 @@ body{
 }
 
 /* =========================
-   AFSNIT 03 – Stats (2 store bokse)
+   AFSNIT 03 – Actions + Theme-knap ved siden af Graf
+   (kun placering/størrelse – farver styres af components.css)
+   ========================= */
+.actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.themeBtn{
+  min-width: 44px;
+  padding-left: 14px;
+  padding-right: 14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* =========================
+   AFSNIT 04 – Stats (2 store bokse)
    ========================= */
 .stats{
   display:grid;
@@ -89,6 +110,22 @@ html[data-theme="light"] .statBox{
   white-space: nowrap;
 }
 
+/* ✅ LÅS: NEON tekstfarver i DARK mode (så de aldrig bliver “mørke”) */
+html[data-theme="dark"] .statTitle{
+  color: rgba(255,255,255,0.94);
+  opacity: 1;
+}
+html[data-theme="dark"] .gainTitle{
+  color: rgba(18,209,142,0.98);
+  opacity: 1;
+}
+html[data-theme="dark"] .statValue{
+  color: rgba(255,255,255,0.98);
+}
+html[data-theme="dark"] .gainValue{
+  color: rgba(18,209,142,0.98);
+}
+
 /* blink signal */
 .flash{
   animation: flashPulse 600ms ease-in-out 1;
@@ -100,7 +137,7 @@ html[data-theme="light"] .statBox{
 }
 
 /* =========================
-   AFSNIT 04 – Tabel
+   AFSNIT 05 – Tabel
    ========================= */
 .fundTable{
   width:100%;
@@ -142,7 +179,7 @@ html[data-theme="light"] .fundTable tbody td{
 .neu{ color: var(--equal); font-weight: 900; }
 
 /* =========================
-   AFSNIT 05 – Chart panel
+   AFSNIT 06 – Chart panel
    ========================= */
 .chartSection{
   margin-top: 14px;
