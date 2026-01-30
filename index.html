@@ -1,97 +1,90 @@
-<!doctype html>
-<html lang="da" data-theme="dark" data-build="2026-01-30-aktieapp">
+<!DOCTYPE html>
+<html lang="da" data-theme="dark" data-build="2026-01-29-aktieapp">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Aktie-App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <title>Aktie App</title>
+
+  <!-- Ikon -->
+  <link rel="icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#0a5ea8" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.webmanifest" />
+
+  <!-- CSS -->
   <link rel="stylesheet" href="css/colors.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/style.css" />
-
-  <link rel="manifest" href="manifest.webmanifest" />
 </head>
 
 <body>
   <div class="app">
-    <header class="top">
-      <div class="topLeft">
-        <img src="img/icon.png" alt="" class="logo" />
+    <header class="header">
+      <div class="title">
+        <span class="logo">📈</span>
         <h1>Udvikling siden 10/09/2025 (DKK & %)</h1>
       </div>
 
-      <button id="themeToggle" class="themeToggle" aria-label="Skift tema" title="Skift lys/mørk">
-        <span id="themeIcon">🌙</span>
-      </button>
+      <button id="themeToggle" class="icon-btn" title="Skift tema">🌙</button>
     </header>
 
     <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
 
     <div class="actions">
-      <button id="refresh" class="btn btn-primary">
-        <img src="img/refresh.png" alt="" /> Opdater
-      </button>
-
-      <button id="pdf" class="btn btn-primary">
-        <img src="img/pdf.png" alt="" /> PDF
-      </button>
-
-      <button id="graph" class="btn btn-primary">
-        <img src="img/chart.png" alt="" /> Graf
-      </button>
+      <button id="refresh">🔄 Opdater</button>
+      <button id="pdf" class="ghost">📄 PDF</button>
+      <button id="graph" class="ghost">📈 Graf</button>
     </div>
 
-    <div id="status" class="statusLine">
-      Klar…
+    <div id="status" class="status">
+      <span id="statusText">Venter på opdatering…</span>
+      <span class="statusSep">•</span>
+      <span id="lastUpdated">Seneste handelsdag: —</span>
     </div>
 
-    <section class="stats">
-      <div class="statBox" id="boxTotal">
-        <div class="statTitle">Samlet porteføljeværdi</div>
-        <div class="statValue" id="totalValue">—</div>
+    <section id="graphPanel" class="graphPanel" hidden>
+      <div class="graphHead">
+        <strong>Graf</strong>
+        <button id="graphClose" class="ghost">Luk</button>
       </div>
 
-      <div class="statBox" id="boxGain">
-        <div class="statTitle gainTitle">Samlet gevinst/tab siden 10.09.2025</div>
-        <div class="statValue gainValue" id="totalGain">—</div>
-      </div>
-    </section>
-
-    <section class="tableWrap">
-      <table class="fundTable">
-        <thead>
-          <tr>
-            <th>Navn</th>
-            <th>Udvikling (%)</th>
-            <th>Udvikling (DKK)</th>
-            <th>Kurs</th>
-            <th>Antal</th>
-            <th>Kurs (DKK)</th>
-          </tr>
-        </thead>
-        <tbody id="fundRows"></tbody>
-      </table>
-    </section>
-
-    <section id="chartSection" class="chartSection" hidden>
-      <div class="chartHeader">
-        <div class="chartTitle">Graf</div>
-        <button id="chartClose" class="btn btn-primary btn-small">Luk</button>
-      </div>
-
-      <label class="chartLabel">
-        Vælg graf:
-        <select id="chartType" class="select">
-          <option value="gain">Gevinst-udvikling</option>
-          <option value="price">Nuværende kurs</option>
+      <div class="graphControls">
+        <label for="graphMode">Vælg graf:</label>
+        <select id="graphMode">
+          <option value="profit">Gevinst-udvikling</option>
+          <option value="price_all">Nuværende kurs</option>
         </select>
-      </label>
+      </div>
 
-      <canvas id="chartCanvas" height="180"></canvas>
-      <div class="chartNote">Bemærk: Grafen viser nuværende data (ingen historik endnu).</div>
+      <canvas id="graphCanvas" width="900" height="300"></canvas>
     </section>
+
+    <div id="table"></div>
   </div>
 
+  <!-- CSV parser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+  <!-- App -->
   <script type="module" src="js/main.js"></script>
+
+  <!-- PDF -->
+  <script>
+    document.getElementById("pdf")?.addEventListener("click", () => window.print());
+  </script>
+
+  <!-- Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/aktie-app/service-worker.js")
+        .then(() => console.log("✅ Service Worker aktiv"))
+        .catch((err) => console.warn("⚠️ SW fejl:", err));
+    }
+  </script>
 </body>
 </html>
