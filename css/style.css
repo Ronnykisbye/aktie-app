@@ -1,34 +1,320 @@
 /* =========================================================
-   style.css
-   - Kun “side-specifik” styling
-   - INGEN hardcodede mørke farver her (kun vars)
+   Aktie-app – style.css (ENESTE master-CSS)
+   Formål:
+   - Samler FARVER + KOMPONENTER + LAYOUT i én fil
+   - Sikrer at Light/Dark mode ALDRIG bliver “blandet”
+   - Sikrer ens blå knapper i både lys og mørk mode
+
+   VIGTIGT:
+   - Denne fil er “sandheden”
+   - Hvis andre css-filer stadig ligger i /css, må de ikke overstyre knapper/tema
    ========================================================= */
 
-.top{
-  margin-top: 6px;
+/* =========================================================
+   AFSNIT 01 – Root tokens (alt fælles)
+   ========================================================= */
+:root{
+  --brand: #0ea5ff;
+  --brand-strong: #0b78c7;
+
+  --ok: #12d18e;
+  --bad: #ff5a5f;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  --shadow: 0 10px 30px rgba(0,0,0,0.25);
+  --shadow-soft: 0 8px 18px rgba(0,0,0,0.15);
+
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-.hint{
-  text-align:center;
+/* =========================================================
+   AFSNIT 02 – Tema-variabler (Light/Dark)
+   ========================================================= */
+html[data-theme="dark"]{
+  --bg: #0d0f14;
+  --card: #141924;
+  --txt: #eaf2ff;
+  --muted: #9fb0c3;
+  --border: rgba(255,255,255,0.08);
+
+  /* Knapper */
+  --btn-bg: var(--brand-strong);
+  --btn-text: #06121c;
+
+  --ghost-bg: rgba(14,165,255,0.14);
+  --ghost-text: #eaf2ff;
+  --ghost-border: rgba(14,165,255,0.40);
+
+  /* Tabel head */
+  --thead1: #0f6ea8;
+  --thead2: #0a5a8a;
+
+  --panelGlow: rgba(14,165,255,0.22);
 }
 
-/* Gør layoutet pænt på store skærme */
+html[data-theme="light"]{
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --txt: #0b1220;
+  --muted: #4b5b6f;
+  --border: rgba(11,18,32,0.10);
+
+  /* Knapper */
+  --btn-bg: #0b6fa8;
+  --btn-text: #ffffff;
+
+  --ghost-bg: rgba(11,111,168,0.10);
+  --ghost-text: #0b6fa8;
+  --ghost-border: rgba(11,111,168,0.30);
+
+  /* Tabel head */
+  --thead1: #0f6ea8;
+  --thead2: #0a5a8a;
+
+  --panelGlow: rgba(11,111,168,0.10);
+}
+
+/* =========================================================
+   AFSNIT 03 – Base
+   ========================================================= */
+*{ box-sizing: border-box; }
+html,body{ height: 100%; }
+body{
+  margin:0;
+  font-family: var(--font);
+  background: radial-gradient(1200px 600px at 50% -200px, rgba(14,165,255,0.14), transparent 60%), var(--bg);
+  color: var(--txt);
+}
+
+/* =========================================================
+   AFSNIT 04 – App layout
+   ========================================================= */
 .app{
-  padding-top: 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 16px 26px;
 }
 
-/* Sørg for at knapper ikke “hopper” */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.title{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+.title h1{
+  margin:0;
+  font-size: clamp(22px, 3vw, 34px);
+  letter-spacing: .2px;
+}
+.subtitle{
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* =========================================================
+   AFSNIT 05 – Knapper (Problem 1 fix)
+   ========================================================= */
 .actions{
-  margin-top: 14px;
+  display:flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 10px 0 6px;
+  flex-wrap: wrap;
 }
 
-/* Små justeringer af teksten */
-.statusLine{
+button{
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .06s ease, filter .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+button:active{ transform: translateY(1px); }
+
+/* Primær knap (Opdater) */
+#refresh{
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  box-shadow: 0 10px 24px rgba(14,165,255,0.16);
+}
+
+/* PDF/Graf som “ghost”, men stadig blå-ish (og MED rigtig kant) */
+button.ghost{
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  border: 1px solid var(--ghost-border);
+  box-shadow: 0 10px 24px rgba(14,165,255,0.10);
+}
+
+/* Sikrer at ghost altid følger vores variabler (overstyrer evt. gamle regler i components.css) */
+html[data-theme="dark"] button.ghost,
+html[data-theme="light"] button.ghost{
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  border: 1px solid var(--ghost-border);
+}
+
+/* Hover */
+#refresh:hover{ filter: brightness(1.06); }
+button.ghost:hover{ filter: brightness(1.05); }
+
+/* =========================================================
+   AFSNIT 06 – Status
+   ========================================================= */
+.status{
+  display:flex;
+  justify-content:center;
+  gap: 10px;
+  margin: 8px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.statusSep{ opacity: .55; }
+
+/* =========================================================
+   AFSNIT 07 – Cards / totals
+   ========================================================= */
+.cards{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 10px 0 18px;
+}
+@media (max-width: 760px){
+  .cards{ grid-template-columns: 1fr; }
+}
+
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 14px 16px;
+  min-height: 88px;
+}
+
+.card h3{
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.card .big{
+  font-size: 26px;
+  font-weight: 900;
+}
+
+/* Opdaterings-“blink” (signal) */
+.flash{
+  animation: flashGlow .55s ease;
+}
+@keyframes flashGlow{
+  0%{ box-shadow: 0 0 0 rgba(14,165,255,0); }
+  40%{ box-shadow: 0 0 0 6px var(--panelGlow); }
+  100%{ box-shadow: 0 0 0 rgba(14,165,255,0); }
+}
+
+/* =========================================================
+   AFSNIT 08 – Tabel
+   ========================================================= */
+.tableWrap{
+  overflow:auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+table{
+  width:100%;
+  border-collapse: collapse;
+  min-width: 820px;
+  background: var(--card);
+}
+
+thead th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 10px;
+  text-align:left;
+  font-size: 13px;
   letter-spacing: .1px;
+  background: linear-gradient(180deg, var(--thead1), var(--thead2));
+  color: #eaf6ff;
 }
 
-/* Tabellens første kolonne */
-.fundTable thead th:first-child,
-.fundTable tbody td:first-child{
-  width: 36%;
+tbody td{
+  padding: 12px 10px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+tbody tr:hover{
+  background: rgba(14,165,255,0.06);
+}
+
+.num{ text-align:right; }
+.muted{ color: var(--muted); }
+
+.good{ color: var(--ok); font-weight: 900; }
+.bad{ color: var(--bad); font-weight: 900; }
+.eq{ color: var(--muted); font-weight: 900; }
+
+/* =========================================================
+   AFSNIT 09 – Graf panel (layout)
+   ========================================================= */
+.graphPanel{
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin: 10px 0 14px;
+}
+
+.graphHead{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.graphControls{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+select{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--txt);
+  font-weight: 700;
+}
+
+/* =========================================================
+   AFSNIT 10 – Små ting
+   ========================================================= */
+.footerNote{
+  text-align:center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 18px;
 }
