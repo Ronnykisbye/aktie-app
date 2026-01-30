@@ -243,3 +243,47 @@ html[data-theme="light"] .select{
   text-align: left;
   padding-left: 0;
 }
+/* =========================================================
+   AFSNIT 99 – LÅS (OVERRIDE) – Stat-bokse tekstfarver
+   Formål:
+   - Dark mode: titler = neon-grøn (aldrig sort)
+   - Light mode: titler = sort (aldrig hvid)
+   - Vi bruger !important for at slå alle andre CSS-filer
+   ========================================================= */
+
+/* LIGHT: alt basis-tekst i stat-boksen mørk */
+html[data-theme="light"] .statBox{
+  color: rgba(10, 27, 43, 0.92) !important;
+}
+
+/* LIGHT: titler skal være sorte */
+html[data-theme="light"] .statTitle,
+html[data-theme="light"] .gainTitle{
+  color: rgba(10, 27, 43, 0.92) !important;
+  opacity: 1 !important;
+}
+
+/* LIGHT: value må gerne være mørk (tjekket) */
+html[data-theme="light"] .statValue{
+  color: rgba(10, 27, 43, 0.92) !important;
+}
+
+/* DARK: alt basis-tekst i stat-boksen hvid */
+html[data-theme="dark"] .statBox{
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* DARK: titler skal være neon-grøn */
+html[data-theme="dark"] .statTitle,
+html[data-theme="dark"] .gainTitle{
+  color: rgba(18, 209, 142, 0.98) !important;
+  opacity: 1 !important;
+}
+
+/* DARK: value (beløb) hvid – gevinstværdi grøn */
+html[data-theme="dark"] .statValue{
+  color: rgba(255, 255, 255, 0.98) !important;
+}
+html[data-theme="dark"] .gainValue{
+  color: rgba(18, 209, 142, 0.98) !important;
+}
