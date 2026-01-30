@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aktie-App</title>
 
+  <!-- Favicon (fjern 404) -->
+  <link rel="icon" href="icon-192.png" />
+
   <link rel="stylesheet" href="css/colors.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/style.css" />
@@ -17,14 +20,11 @@
   <div class="app">
     <header class="top">
       <div class="topLeft">
-        <!-- FIX: ingen /img/ mappe -> brug root ikon -->
         <img src="icon-192.png" alt="" class="logo" />
         <h1>Udvikling siden 10/09/2025 (DKK & %)</h1>
       </div>
 
-      <button id="themeToggle" class="themeToggle" aria-label="Skift tema" title="Skift lys/mørk">
-        <span id="themeIcon">🌙</span>
-      </button>
+      <!-- (Tema-knappen flyttes væk herfra – så den kommer ind ved knapperne) -->
     </header>
 
     <p class="hint">Tryk på <b>Opdater</b> for at hente de nyeste kurser.</p>
@@ -33,6 +33,11 @@
       <button id="refresh" class="btn btn-primary">Opdater</button>
       <button id="pdf" class="btn btn-primary">PDF</button>
       <button id="graph" class="btn btn-primary">Graf</button>
+
+      <!-- Tema-knap: nu ved siden af Graf (mod midten) -->
+      <button id="themeToggle" class="btn btn-primary themeBtn" aria-label="Skift tema" title="Skift lys/mørk">
+        <span id="themeIcon">🌙</span>
+      </button>
     </div>
 
     <div id="status" class="statusLine">Klar…</div>
