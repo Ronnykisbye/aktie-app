@@ -12,202 +12,160 @@ body{
   margin:0;
   background: var(--bg);
   color: var(--txt);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: system-ui,'Segoe UI',Roboto,Arial;
 }
-
-.logo{
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  opacity: .95;
+.container{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 26px 18px 40px;
 }
-
-.tableWrap{
-  margin-top: 14px;
+h1{
+  margin: 0 0 10px;
+  font-size: 44px;
+  letter-spacing: .2px;
+  color: var(--accent);
 }
-
-/* =========================
-   AFSNIT 02 – Status linje
-   ========================= */
-.statusLine{
-  text-align:center;
-  color: var(--muted);
-  margin: 8px 0 14px;
-  font-size: .95rem;
+p.lead{
+  margin: 0 0 16px;
+  opacity: .9;
 }
 
 /* =========================
-   AFSNIT 03 – Actions + Theme-knap ved siden af Graf
-   (kun placering/størrelse – farver styres af components.css)
+   AFSNIT 02 – Topbar / knapper
    ========================= */
-.actions{
+.toolbar{
   display:flex;
-  align-items:center;
   justify-content:center;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items:center;
+  gap: 12px;
+  margin: 14px 0 6px;
 }
 
-.themeBtn{
-  min-width: 44px;
-  padding-left: 14px;
-  padding-right: 14px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
+.status{
+  text-align:center;
+  font-size: 14px;
+  opacity: .9;
+  margin: 6px 0 18px;
 }
 
 /* =========================
-   AFSNIT 04 – Stats (2 store bokse)
+   AFSNIT 03 – Stats bokse (2 store)
    ========================= */
 .stats{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
-  margin: 14px 0 14px;
+  margin: 14px 0 16px;
 }
 
-@media (max-width: 860px){
+@media (max-width: 820px){
   .stats{ grid-template-columns: 1fr; }
 }
 
-.statBox{
+.stat-card{
   background: var(--card);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 16px 18px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 18px 18px;
   display:flex;
   align-items:center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 76px;
+  justify-content:space-between;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
 }
-
-html[data-theme="light"] .statBox{
-  border: 1px solid rgba(10,27,43,0.12);
-  box-shadow: 0 10px 26px rgba(10,27,43,0.10);
-}
-
-.statTitle{
+.stat-title{
   font-weight: 900;
-  letter-spacing: .1px;
-  color: var(--txt);
+  letter-spacing: .2px;
   opacity: .95;
+  line-height: 1.15;
+  color: var(--statTitle); /* styres af tema */
+  margin-right: 12px;
 }
-
-.gainTitle{
-  color: var(--green);
-}
-
-.statValue{
+.stat-value{
+  font-size: 34px;
   font-weight: 1000;
-  font-size: clamp(22px, 2.2vw, 32px);
-  padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(0,191,255,0.10);
-  border: 1px solid rgba(0,191,255,0.20);
-  white-space: nowrap;
+  padding: 10px 14px;
+  background: rgba(0,191,255,0.08);
+  border: 1px solid rgba(0,191,255,0.28);
+  color: var(--statValue); /* styres af tema */
+  text-align:right;
+  min-width: 250px;
 }
 
-/* ✅ LÅS: NEON i DARK mode (så titler aldrig bliver “sorte”) */
-html[data-theme="dark"] .statTitle{
-  color: rgba(18,209,142,0.98); /* neon-grøn */
-  opacity: 1;
-}
-html[data-theme="dark"] .gainTitle{
-  color: rgba(18,209,142,0.98); /* neon-grøn */
-  opacity: 1;
-}
-html[data-theme="dark"] .statValue{
-  color: rgba(255,255,255,0.98); /* beløb = hvid */
-}
-html[data-theme="dark"] .gainValue{
-  color: rgba(18,209,142,0.98); /* gevinst-beløb = grøn */
-}
-
-/* blink signal */
+/* Flash ved opdatering */
 .flash{
-  animation: flashPulse 600ms ease-in-out 1;
+  animation: flash 500ms ease-out;
 }
-@keyframes flashPulse{
-  0%{ box-shadow: 0 0 0 rgba(0,191,255,0); }
-  35%{ box-shadow: 0 0 0 10px rgba(0,191,255,0.16); }
-  100%{ box-shadow: 0 0 0 rgba(0,191,255,0); }
+@keyframes flash{
+  0%{ box-shadow: 0 0 0 rgba(0,0,0,0); }
+  30%{ box-shadow: 0 0 0 6px rgba(0,191,255,0.18); }
+  100%{ box-shadow: 0 0 0 rgba(0,0,0,0); }
 }
 
 /* =========================
-   AFSNIT 05 – Tabel
+   AFSNIT 04 – Table
    ========================= */
-.fundTable{
-  width:100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  border-radius: 14px;
+.table-wrap{
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
   overflow:hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: var(--card);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
 }
-
-html[data-theme="light"] .fundTable{
-  border: 1px solid rgba(10,27,43,0.12);
-  box-shadow: 0 10px 26px rgba(10,27,43,0.10);
+table{
+  width:100%;
+  border-collapse: collapse;
 }
-
-.fundTable thead th{
-  background: linear-gradient(180deg, var(--thead1), var(--thead2));
-  color: #fff;
-  padding: 12px;
-  text-align:left;
+thead th{
+  background: rgba(0,191,255,0.14);
+  color: var(--theadTxt);     /* ✅ FIX: light mode = sort */
   font-weight: 900;
+  text-align:left;
+  padding: 14px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-
-.fundTable tbody td{
-  padding: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+tbody td{
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: var(--txt);
 }
+tbody tr:last-child td{ border-bottom: none; }
 
-html[data-theme="light"] .fundTable tbody td{
-  border-top: 1px solid rgba(10,27,43,0.10);
-}
-
-.fundTable td.left{ font-weight: 900; }
-
-.pos{ color: var(--green); font-weight: 900; }
-.neg{ color: var(--red); font-weight: 900; }
-.neu{ color: var(--equal); font-weight: 900; }
+td.pos{ color: var(--pos); font-weight: 900; }
+td.neg{ color: var(--neg); font-weight: 900; }
 
 /* =========================
-   AFSNIT 06 – Chart panel
+   AFSNIT 05 – Chart panel
    ========================= */
-.chartSection{
-  margin-top: 14px;
+.chart{
   background: var(--card);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 16px 16px 12px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 14px 14px 10px;
+  margin-top: 14px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
 }
 
-html[data-theme="light"] .chartSection{
-  border: 1px solid rgba(10,27,43,0.12);
-  box-shadow: 0 10px 26px rgba(10,27,43,0.10);
+.chart-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.chartHeader{
+.chart-title{
+  font-weight: 1000;
+  margin: 0;
+}
+
+.chart-controls{
   display:flex;
   align-items:center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
 }
 
-.chartTitle{
-  font-weight: 1000;
-}
-
-.chartLabel{
+.chart-row{
   display:flex;
   align-items:center;
   gap: 10px;
@@ -229,95 +187,68 @@ html[data-theme="light"] .select{
   background: rgba(10,27,43,0.04);
 }
 
+/* FIX: Dark mode dropdown skal være læsbar */
+html[data-theme="dark"] .select{
+  border: 1px solid rgba(0,191,255,0.45);
+  background: rgba(5,15,25,0.65);
+  color: rgba(255,255,255,0.92);
+}
+
+html[data-theme="dark"] .select option{
+  background: rgba(5,15,25,0.95);
+  color: rgba(255,255,255,0.92);
+}
+
 #chartCanvas{
   width: 100%;
   display:block;
   margin-top: 6px;
 }
 
-/* ✅ FIX: “Bemærk…” under grafen står lige (ikke skævt) */
-.chartNote{
-  color: var(--muted);
+/* ✅ FIX: “Bemærk…” under grafen står lige (ikke skråt) */
+.chart-note{
   margin-top: 10px;
-  font-size: .92rem;
-  text-align: left;
-  padding-left: 0;
-}
-/* =========================================================
-   AFSNIT 99 – LÅS (OVERRIDE) – Stat-bokse tekstfarver
-   Formål:
-   - Dark mode: titler = neon-grøn (aldrig sort)
-   - Light mode: titler = sort (aldrig hvid)
-   - Vi bruger !important for at slå alle andre CSS-filer
-   ========================================================= */
-
-/* LIGHT: alt basis-tekst i stat-boksen mørk */
-html[data-theme="light"] .statBox{
-  color: rgba(10, 27, 43, 0.92) !important;
+  font-size: 13px;
+  opacity: .9;
+  color: var(--txt);
+  transform: none !important;
 }
 
-/* LIGHT: titler skal være sorte */
-html[data-theme="light"] .statTitle,
-html[data-theme="light"] .gainTitle{
-  color: rgba(10, 27, 43, 0.92) !important;
-  opacity: 1 !important;
+/* =========================
+   AFSNIT 06 – Tema-farver via CSS vars
+   ========================= */
+:root{
+  --bg: radial-gradient(1200px 800px at 50% -10%, rgba(0,191,255,0.16), rgba(0,0,0,0.0) 65%), #0b0f14;
+  --txt: rgba(255,255,255,0.88);
+  --card: rgba(16,24,34,0.78);
+  --accent: #00bfff;
+  --pos: #12d18e;
+  --neg: #ff5a5f;
+
+  /* Stats */
+  --statTitle: rgba(255,255,255,0.90);
+  --statValue: rgba(255,255,255,0.96);
+
+  /* Table header */
+  --theadTxt: rgba(255,255,255,0.92);
 }
 
-/* LIGHT: value må gerne være mørk (tjekket) */
-html[data-theme="light"] .statValue{
-  color: rgba(10, 27, 43, 0.92) !important;
+/* LIGHT THEME */
+html[data-theme="light"]{
+  --bg: radial-gradient(1200px 800px at 50% -10%, rgba(0,191,255,0.18), rgba(255,255,255,0.0) 70%), #e9f0f5;
+  --txt: rgba(10,27,43,0.92);
+  --card: rgba(255,255,255,0.86);
+  --accent: #00a9ff;
+
+  /* Stats */
+  --statTitle: rgba(10,27,43,0.92);
+  --statValue: rgba(10,27,43,0.92);
+
+  /* Table header */
+  --theadTxt: rgba(10,27,43,0.92);
 }
 
-/* DARK: alt basis-tekst i stat-boksen hvid */
-html[data-theme="dark"] .statBox{
-  color: rgba(255, 255, 255, 0.96) !important;
-}
-
-/* DARK: titler skal være neon-grøn */
-html[data-theme="dark"] .statTitle,
-html[data-theme="dark"] .gainTitle{
-  color: rgba(18, 209, 142, 0.98) !important;
-  opacity: 1 !important;
-}
-
-/* DARK: value (beløb) hvid – gevinstværdi grøn */
-html[data-theme="dark"] .statValue{
-  color: rgba(255, 255, 255, 0.98) !important;
-}
-html[data-theme="dark"] .gainValue{
-  color: rgba(18, 209, 142, 0.98) !important;
-}
-/* =========================================================
-   AFSNIT 100 – LÅS: Læsbarhed i DARK mode (tabel + graf UI)
-   ========================================================= */
-
-/* Dark mode: tabelrækker skal være læsbare */
-html[data-theme="dark"] .fundTable tbody td{
-  color: rgba(255,255,255,0.88) !important;
-}
-
-/* Dark mode: fond-navne må gerne være ekstra tydelige */
-html[data-theme="dark"] .fundTable tbody td.left{
-  color: rgba(255,255,255,0.94) !important;
-}
-
-/* Dark mode: graf-tekster skal være læsbare */
-html[data-theme="dark"] .chartLabel,
-html[data-theme="dark"] .chartTitle,
-html[data-theme="dark"] .chartNote{
-  color: rgba(255,255,255,0.88) !important;
-}
-
-/* Dark mode: dropdown-tekst */
-html[data-theme="dark"] .select{
-  color: rgba(255,255,255,0.92) !important;
-}
-
-/* =========================================================
-   AFSNIT 101 – FIX: Tabeloverskrift i LIGHT mode
-   ========================================================= */
-
-html[data-theme="light"] .fundTable thead th {
-  color: #111 !important;
-  font-weight: 600;
-}
+/* =========================
+   AFSNIT 07 – Små finjusteringer
+   ========================= */
+.hidden{ display:none !important; }
