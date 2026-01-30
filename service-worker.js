@@ -6,10 +6,8 @@
    - Cache-name bump, så gamle caches ryger
    ========================================================= */
 
-const CACHE_NAME = "aktieapp-v2026-01-30-2"; // <-- BUMP
+const CACHE_NAME = "aktieapp-v2026-01-30-3"; // <-- BUMP
 
-// Cache KUN filer der faktisk findes i dit repo lige nu.
-// (Du har fx manifest.json + icon-192.png + icon-512.png i roden.)
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -24,21 +22,13 @@ const CORE_ASSETS = [
   "./icon-512.png",
   "./fonde.csv",
   "./prices.json",
-
-  // Hvis du bruger purchase prices fra /data:
   "./data/purchase-prices.js"
 ];
 
-// Helper: cache filer én-for-én så en enkelt 404 ikke smadrer install
 async function safeCacheAll(cache, assets) {
   await Promise.allSettled(
     assets.map(async (url) => {
-      try {
-        await cache.add(url);
-      } catch (e) {
-        // Stilhed er guld her: vi vil ikke stoppe SW pga. en manglende fil
-        // (du kan altid se manglende filer i Network/Console)
-      }
+      try { await cache.add(url); } catch (e) { /* ignore */ }
     })
   );
 }
@@ -87,23 +77,21 @@ async function cacheFirst(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Kun vores eget site
   if (url.origin !== location.origin) return;
 
   const path = url.pathname;
 
-  // Datafiler: network-first (så "Opdater" altid kan hente friskt)
+  // Data: altid frisk
   if (path.endsWith("/prices.json") || path.endsWith("/fonde.csv")) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // HTML/CSS/JS: network-first (så nye versioner slår igennem)
-  if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
+  // App-filer: network-first så du slipper for “gammel version”
+  if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js") || path.endsWith("manifest.json")) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // Resten: cache-first
   event.respondWith(cacheFirst(event.request));
 });
