@@ -254,4 +254,95 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
   // data points
   const labels = list.map((x) => String(x?.name || "Ukendt"));
   const values = list.map((x) => {
-    const currenc
+    const currency = String(x?.currency || "DKK").toUpperCase();
+    const qty = Number(x?.quantity ?? 0);
+    const price = Number(x?.price ?? NaN);
+    const buy = Number(x?.buyPrice ?? NaN);
+
+    const priceDKK = toDKK(price, currency, eurDkk);
+    const buyDKK = toDKK(buy, currency, eurDkk);
+
+    if (mode === "profit") {
+      const p = Number.isFinite(qty) && Number.isFinite(priceDKK) && Number.isFinite(buyDKK)
+        ? qty * (priceDKK - buyDKK)
+        : NaN;
+      return Number.isFinite(p) ? p : 0;
+    }
+
+    // price_all (kurs i DKK)
+    return Number.isFinite(priceDKK) ? priceDKK : 0;
+  });
+
+  // chart layout
+  const padL = 60, padR = 20, padT = 18, padB = 50;
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+
+  // scale (tillad negative for profit)
+  const minV = Math.min(...values, 0);
+  const maxV = Math.max(...values, 0);
+  const range = (maxV - minV) || 1;
+
+  function yOf(v) {
+    const t = (v - minV) / range; // 0..1
+    return padT + (1 - t) * innerH;
+  }
+
+  // axes
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + innerH);
+  ctx.lineTo(padL + innerW, padT + innerH);
+  ctx.stroke();
+
+  // zero-line if needed
+  if (minV < 0 && maxV > 0) {
+    const y0 = yOf(0);
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(padL, y0);
+    ctx.lineTo(padL + innerW, y0);
+    ctx.stroke();
+  }
+
+  // bars
+  const n = values.length;
+  const gap = 14;
+  const barW = Math.max(18, (innerW - gap * (n - 1)) / n);
+
+  for (let i = 0; i < n; i++) {
+    const v = values[i];
+    const x = padL + i * (barW + gap);
+    const y = yOf(v);
+    const y0 = yOf(0);
+    const top = Math.min(y, y0);
+    const height = Math.abs(y0 - y);
+
+    // farve: grøn for profit>0, rød for profit<0, ellers blå
+    if (mode === "profit") {
+      ctx.fillStyle = v > 0 ? "rgba(18,209,142,0.85)" : v < 0 ? "rgba(255,90,95,0.85)" : "rgba(14,165,255,0.75)";
+    } else {
+      ctx.fillStyle = "rgba(14,165,255,0.75)";
+    }
+
+    ctx.fillRect(x, top, barW, Math.max(2, height));
+
+    // label
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "12px system-ui";
+    ctx.save();
+    ctx.translate(x + barW / 2, padT + innerH + 18);
+    ctx.rotate(-0.35);
+    ctx.textAlign = "center";
+    ctx.fillText(labels[i].slice(0, 18), 0, 0);
+    ctx.restore();
+  }
+
+  // title
+  ctx.fillStyle = "rgba(255,255,255,0.90)";
+  ctx.font = "14px system-ui";
+  const title = mode === "profit" ? "Gevinst/tab (DKK) pr fond" : "Nuværende kurs (DKK) pr fond";
+  ctx.fillText(title, padL, 14);
+}
