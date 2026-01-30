@@ -6,12 +6,13 @@
    - Sikrer ens blå knapper i både lys og mørk mode
 
    VIGTIGT:
-   - Denne fil er “sandheden”
-   - Hvis andre css-filer stadig ligger i /css, må de ikke overstyre knapper/tema
+   - Denne fil må IKKE importere gamle app.css
+   - Theme styres af: <html data-theme="dark|light">
    ========================================================= */
 
+
 /* =========================================================
-   AFSNIT 01 – Root tokens (alt fælles)
+   AFSNIT 01 – Theme tokens (CSS-variabler)
    ========================================================= */
 :root{
   --brand: #0ea5ff;
@@ -24,85 +25,151 @@
   --radius-sm: 10px;
 
   --shadow: 0 10px 30px rgba(0,0,0,0.25);
-  --shadow-soft: 0 8px 18px rgba(0,0,0,0.15);
-
-  --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --shadow-soft: 0 10px 24px rgba(0,0,0,0.18);
 }
 
-/* =========================================================
-   AFSNIT 02 – Tema-variabler (Light/Dark)
-   ========================================================= */
+/* Dark theme */
 html[data-theme="dark"]{
-  --bg: #0d0f14;
-  --card: #141924;
-  --txt: #eaf2ff;
-  --muted: #9fb0c3;
-  --border: rgba(255,255,255,0.08);
+  --bg: #0b0f14;
+  --surface: #111823;
+  --surface-2: #0f1620;
+  --card: #141c27;
+  --border: rgba(255,255,255,0.10);
+  --text: #eaf2ff;
+  --muted: rgba(234,242,255,0.70);
 
-  /* Knapper */
   --btn-bg: var(--brand-strong);
   --btn-text: #06121c;
+  --btn-border: rgba(14,165,255,0.55);
 
   --ghost-bg: rgba(14,165,255,0.14);
   --ghost-text: #eaf2ff;
   --ghost-border: rgba(14,165,255,0.40);
 
-  /* Tabel head */
-  --thead1: #0f6ea8;
-  --thead2: #0a5a8a;
-
-  --panelGlow: rgba(14,165,255,0.22);
+  --table-head: linear-gradient(180deg, rgba(12,122,190,1), rgba(7,92,150,1));
+  --row: rgba(255,255,255,0.04);
+  --row2: rgba(255,255,255,0.02);
 }
 
+/* Light theme */
 html[data-theme="light"]{
-  --bg: #f5f7fb;
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
   --card: #ffffff;
-  --txt: #0b1220;
-  --muted: #4b5b6f;
-  --border: rgba(11,18,32,0.10);
+  --border: rgba(2,12,27,0.12);
+  --text: #0a1b2b;
+  --muted: rgba(10,27,43,0.68);
 
-  /* Knapper */
-  --btn-bg: #0b6fa8;
+  --btn-bg: var(--brand-strong);
   --btn-text: #ffffff;
+  --btn-border: rgba(11,120,199,0.40);
 
-  --ghost-bg: rgba(11,111,168,0.10);
-  --ghost-text: #0b6fa8;
-  --ghost-border: rgba(11,111,168,0.30);
+  --ghost-bg: rgba(11,120,199,0.10);
+  --ghost-text: #0a1b2b;
+  --ghost-border: rgba(11,120,199,0.28);
 
-  /* Tabel head */
-  --thead1: #0f6ea8;
-  --thead2: #0a5a8a;
-
-  --panelGlow: rgba(11,111,168,0.10);
+  --table-head: linear-gradient(180deg, rgba(11,120,199,1), rgba(8,92,162,1));
+  --row: rgba(10,27,43,0.04);
+  --row2: rgba(10,27,43,0.02);
 }
 
 /* =========================================================
-   AFSNIT 03 – Base
+   AFSNIT 02 – Base layout
    ========================================================= */
 *{ box-sizing: border-box; }
-html,body{ height: 100%; }
 body{
   margin:0;
-  font-family: var(--font);
-  background: radial-gradient(1200px 600px at 50% -200px, rgba(14,165,255,0.14), transparent 60%), var(--bg);
-  color: var(--txt);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: radial-gradient(1200px 900px at 50% -10%, rgba(14,165,255,0.12), transparent 55%), var(--bg);
+  color: var(--text);
+}
+
+.app{
+  width: min(1200px, 96vw);
+  margin: 0 auto;
+  padding: 18px 10px 40px;
 }
 
 /* =========================================================
-   AFSNIT 04 – App layout
+   AFSNIT 03 – Knapper (ens i lys/mørk)
    ========================================================= */
-.app{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 18px 16px 26px;
+button{
+  font: inherit;
+  border: 1px solid var(--btn-border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform .08s ease, filter .18s ease, background .18s ease, border-color .18s ease;
 }
 
+button:active{ transform: translateY(1px); }
+
+button:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primær knap */
+#refresh{
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  box-shadow: 0 10px 24px rgba(14,165,255,0.16);
+}
+
+/* PDF/Graf som “ghost”, men stadig blå-ish */
+button.ghost{
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  border-color: var(--ghost-border);
+}
+
+/* Hover */
+#refresh:hover{ filter: brightness(1.06); }
+button.ghost:hover{ filter: brightness(1.05); }
+
+/* Ikon-knapper (theme) */
+.icon-btn{
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  border-color: var(--ghost-border);
+}
+
+/* Actions row */
+.actions{
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Blink/feedback (bruges af JS når noget opdateres) */
+.flash{
+  animation: flashPulse 600ms ease-in-out 1;
+}
+@keyframes flashPulse{
+  0%   { box-shadow: 0 0 0 rgba(14,165,255,0); transform: scale(1); }
+  35%  { box-shadow: 0 0 0 8px rgba(14,165,255,0.14); transform: scale(1.01); }
+  100% { box-shadow: 0 0 0 rgba(14,165,255,0); transform: scale(1); }
+}
+
+/* =========================================================
+   AFSNIT 04 – Header / status (som du har nu)
+   ========================================================= */
 .header{
   display:flex;
   align-items:center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .title{
@@ -110,186 +177,85 @@ body{
   align-items:center;
   gap: 10px;
 }
-.title h1{
-  margin:0;
-  font-size: clamp(22px, 3vw, 34px);
+
+h1{
+  margin: 10px 0 6px;
+  font-size: clamp(28px, 3vw, 44px);
+  color: var(--brand);
+  font-weight: 900;
   letter-spacing: .2px;
 }
-.subtitle{
-  margin: 2px 0 0;
+
+.hint{
+  margin: 0 0 14px;
   color: var(--muted);
-  font-size: 14px;
 }
 
-/* =========================================================
-   AFSNIT 05 – Knapper (Problem 1 fix)
-   ========================================================= */
-.actions{
-  display:flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 10px 0 6px;
-  flex-wrap: wrap;
-}
-
-button{
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform .06s ease, filter .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
-}
-
-button:active{ transform: translateY(1px); }
-
-/* Primær knap (Opdater) */
-#refresh{
-  background: var(--btn-bg);
-  color: var(--btn-text);
-  box-shadow: 0 10px 24px rgba(14,165,255,0.16);
-}
-
-/* PDF/Graf som “ghost”, men stadig blå-ish (og MED rigtig kant) */
-button.ghost{
-  background: var(--ghost-bg);
-  color: var(--ghost-text);
-  border: 1px solid var(--ghost-border);
-  box-shadow: 0 10px 24px rgba(14,165,255,0.10);
-}
-
-/* Sikrer at ghost altid følger vores variabler (overstyrer evt. gamle regler i components.css) */
-html[data-theme="dark"] button.ghost,
-html[data-theme="light"] button.ghost{
-  background: var(--ghost-bg);
-  color: var(--ghost-text);
-  border: 1px solid var(--ghost-border);
-}
-
-/* Hover */
-#refresh:hover{ filter: brightness(1.06); }
-button.ghost:hover{ filter: brightness(1.05); }
-
-/* =========================================================
-   AFSNIT 06 – Status
-   ========================================================= */
 .status{
   display:flex;
-  justify-content:center;
   gap: 10px;
-  margin: 8px 0 14px;
+  justify-content: center;
+  align-items: center;
   color: var(--muted);
-  font-size: 13px;
+  margin-bottom: 18px;
 }
-.statusSep{ opacity: .55; }
+
+.statusSep{ opacity: .5; }
 
 /* =========================================================
-   AFSNIT 07 – Cards / totals
+   AFSNIT 05 – Table (basis)
    ========================================================= */
-.cards{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 10px 0 18px;
-}
-@media (max-width: 760px){
-  .cards{ grid-template-columns: 1fr; }
-}
-
-.card{
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-  padding: 14px 16px;
-  min-height: 88px;
-}
-
-.card h3{
-  margin: 0 0 10px;
-  font-size: 14px;
-  color: var(--muted);
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-.card .big{
-  font-size: 26px;
-  font-weight: 900;
-}
-
-/* Opdaterings-“blink” (signal) */
-.flash{
-  animation: flashGlow .55s ease;
-}
-@keyframes flashGlow{
-  0%{ box-shadow: 0 0 0 rgba(14,165,255,0); }
-  40%{ box-shadow: 0 0 0 6px var(--panelGlow); }
-  100%{ box-shadow: 0 0 0 rgba(14,165,255,0); }
-}
-
-/* =========================================================
-   AFSNIT 08 – Tabel
-   ========================================================= */
-.tableWrap{
-  overflow:auto;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-soft);
-}
-
 table{
-  width:100%;
-  border-collapse: collapse;
-  min-width: 820px;
-  background: var(--card);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  background: var(--surface);
 }
 
 thead th{
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 12px 10px;
-  text-align:left;
-  font-size: 13px;
-  letter-spacing: .1px;
-  background: linear-gradient(180deg, var(--thead1), var(--thead2));
-  color: #eaf6ff;
+  background: var(--table-head);
+  color: #ffffff;
+  padding: 12px 12px;
+  font-weight: 900;
+  text-align: left;
+  font-size: 0.95rem;
 }
 
 tbody td{
-  padding: 12px 10px;
+  padding: 12px 12px;
   border-top: 1px solid var(--border);
-  font-size: 14px;
 }
 
-tbody tr:hover{
-  background: rgba(14,165,255,0.06);
-}
+tbody tr:nth-child(odd){ background: var(--row); }
+tbody tr:nth-child(even){ background: var(--row2); }
 
-.num{ text-align:right; }
-.muted{ color: var(--muted); }
+td.left{ font-weight: 800; }
 
-.good{ color: var(--ok); font-weight: 900; }
-.bad{ color: var(--bad); font-weight: 900; }
-.eq{ color: var(--muted); font-weight: 900; }
+.pos{ color: var(--ok); font-weight: 900; }
+.neg{ color: var(--bad); font-weight: 900; }
+.neu{ color: var(--text); font-weight: 900; }
 
 /* =========================================================
-   AFSNIT 09 – Graf panel (layout)
+   AFSNIT 06 – Graph panel (basis)
    ========================================================= */
 .graphPanel{
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), var(--card);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-  margin: 10px 0 14px;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  margin: 12px 0 18px;
 }
 
 .graphHead{
   display:flex;
   align-items:center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 10px;
 }
 
@@ -297,24 +263,89 @@ tbody tr:hover{
   display:flex;
   align-items:center;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  color: var(--text);
 }
+
 select{
-  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--txt);
-  font-weight: 700;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+  font-weight: 800;
 }
 
 /* =========================================================
-   AFSNIT 10 – Små ting
+   AFSNIT 99 – LÅS UI (stabilt look på tværs af filer)
+   Formål:
+   - Knapper: samme “familie” i light/dark (ingen grå/bleg ghost)
+   - Totals: altid 2 store “kort/knapper” med tydelig tekst
    ========================================================= */
-.footerNote{
-  text-align:center;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 18px;
+
+/* --- Actions-knapper: ens højde/spacing og mere “app” look --- */
+.actions button{
+  min-width: 116px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 900;
+  letter-spacing: .1px;
+}
+
+/* Ghost-knapper skal være tydeligt blå – også i LIGHT */
+html[data-theme="light"] .actions button.ghost{
+  background: rgba(11,120,199,0.18);
+  border-color: rgba(11,120,199,0.55);
+  color: #063a62;
+}
+
+/* Ghost-knapper tydeligt blå – i DARK */
+html[data-theme="dark"] .actions button.ghost{
+  background: rgba(14,165,255,0.22);
+  border-color: rgba(14,165,255,0.55);
+  color: #eaf2ff;
+}
+
+/* Hover: lidt mere tydeligt, men stabilt */
+html[data-theme="light"] .actions button.ghost:hover,
+html[data-theme="dark"] .actions button.ghost:hover{
+  filter: brightness(1.07);
+}
+
+/* --- Totals (2 store “knap-kort”) – gør dem altid tydelige --- */
+.totals h3{
+  font-size: 1.10rem;
+  padding: 18px 18px;
+  border-radius: 18px;
+  border-width: 1px;
+}
+
+html[data-theme="light"] .totals h3{
+  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(245,248,252,1));
+  border-color: rgba(2,12,27,0.16);
+}
+
+html[data-theme="dark"] .totals h3{
+  background: linear-gradient(180deg, rgba(20,28,39,1), rgba(15,22,32,1));
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* Værdi-pillen: større og med bedre kontrast */
+.totals h3 .value{
+  font-size: 1.55rem;
+  padding: 12px 16px;
+  border-width: 1px;
+}
+
+html[data-theme="light"] .totals h3 .value{
+  background: rgba(11,120,199,0.10);
+  border-color: rgba(11,120,199,0.25);
+}
+
+html[data-theme="dark"] .totals h3 .value{
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.14);
 }
