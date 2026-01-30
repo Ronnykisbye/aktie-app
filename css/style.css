@@ -1,5 +1,5 @@
 /* =========================================================
-   css/style.css  (LÅST: kun layout + stats + chart + table)
+   css/style.css  (LÅST: layout + stats + chart + table)
    - Rører IKKE ved globale button-farver (det gør components.css)
    - Sikrer 2 store stats-bokse side-by-side
    - Chart-panel pænt i light/dark
@@ -110,20 +110,20 @@ html[data-theme="light"] .statBox{
   white-space: nowrap;
 }
 
-/* ✅ LÅS: NEON tekstfarver i DARK mode (så de aldrig bliver “mørke”) */
+/* ✅ LÅS: NEON i DARK mode (så titler aldrig bliver “sorte”) */
 html[data-theme="dark"] .statTitle{
-  color: rgba(255,255,255,0.94);
+  color: rgba(18,209,142,0.98); /* neon-grøn */
   opacity: 1;
 }
 html[data-theme="dark"] .gainTitle{
-  color: rgba(18,209,142,0.98);
+  color: rgba(18,209,142,0.98); /* neon-grøn */
   opacity: 1;
 }
 html[data-theme="dark"] .statValue{
-  color: rgba(255,255,255,0.98);
+  color: rgba(255,255,255,0.98); /* beløb = hvid */
 }
 html[data-theme="dark"] .gainValue{
-  color: rgba(18,209,142,0.98);
+  color: rgba(18,209,142,0.98); /* gevinst-beløb = grøn */
 }
 
 /* blink signal */
@@ -235,8 +235,11 @@ html[data-theme="light"] .select{
   margin-top: 6px;
 }
 
+/* ✅ FIX: “Bemærk…” under grafen står lige (ikke skævt) */
 .chartNote{
   color: var(--muted);
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: .92rem;
+  text-align: left;
+  padding-left: 0;
 }
