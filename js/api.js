@@ -33,6 +33,20 @@ function normKey(s) {
   return String(s || "").trim().toLowerCase();
 }
 
+// Dansk talformat i CSV kan være "111,92" -> 111.92
+function toNumberSmart(v) {
+  if (v === null || v === undefined) return NaN;
+  if (typeof v === "number") return v;
+
+  const s = String(v).trim();
+  if (!s) return NaN;
+
+  // fjern tusindtals-separatorer (.)
+  const cleaned = s.replace(/\./g, "").replace(",", ".");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 /*
 AFSNIT 03 – FX (EUR->DKK) med cache
 */
@@ -69,17 +83,72 @@ function saveFXRate(rate) {
 }
 
 /*
-AFSNIT 04 – CSV parser (holdings)
+AFSNIT 04 – CSV parser (uden PapaParse)
+- Robust nok til:
+  - delimiter: ; eller ,
+  - quotes: "..."
+  - tomme linjer
 */
+function detectDelimiter(headerLine) {
+  const semi = (headerLine.match(/;/g) || []).length;
+  const comma = (headerLine.match(/,/g) || []).length;
+  return semi >= comma ? ";" : ",";
+}
+
+function parseCsvLine(line, delim) {
+  const out = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      // dobbelt quote inde i quoted string => "
+      const next = line[i + 1];
+      if (inQuotes && next === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && ch === delim) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  out.push(cur);
+  return out.map((s) => String(s).trim());
+}
+
 function parseCsv(csvText) {
-  // PapaParse er loaded via CDN i index.html
-  if (typeof Papa === "undefined") throw new Error("PapaParse mangler");
-  const parsed = Papa.parse(csvText, {
-    header: true,
-    dynamicTyping: true,
-    skipEmptyLines: true
-  });
-  return parsed.data || [];
+  const text = String(csvText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  if (!lines.length) return [];
+
+  const delim = detectDelimiter(lines[0]);
+  const headers = parseCsvLine(lines[0], delim);
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i], delim);
+    if (!cols.length) continue;
+
+    const row = {};
+    for (let c = 0; c < headers.length; c++) {
+      const key = headers[c];
+      row[key] = cols[c] ?? "";
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 /*
@@ -103,9 +172,9 @@ export async function getLatestHoldingsPrices() {
     .map((r) => ({
       name: normName(r.Navn),
       currency: String(r.Valuta || "DKK").toUpperCase(),
-      buyPrice: Number(r.KøbsKurs),
-      quantity: Number(r.Antal),
-      _csvPrice: Number(r.Kurs)
+      buyPrice: toNumberSmart(r.KøbsKurs),
+      quantity: toNumberSmart(r.Antal),
+      _csvPrice: toNumberSmart(r.Kurs)
     }))
     .filter((h) => h.name);
 
@@ -116,7 +185,6 @@ export async function getLatestHoldingsPrices() {
   const priceByKey = new Map();
 
   try {
-    // VIGTIGT: fetchJson bruger cacheBust => altid frisk
     const prices = await fetchJson(PRICES_JSON_PATH);
 
     pricesUpdatedAt = prices?.updatedAt || pricesUpdatedAt;
@@ -145,25 +213,27 @@ export async function getLatestHoldingsPrices() {
   // 5.3: Merge pr. holding (holdings definerer porteføljen)
   const mergedItems = holdings.map((h) => {
     const exact = priceByExactName.get(h.name);
-    const fuzzy = priceByKey.get(normKey(h.name));
-    const p = exact || fuzzy || null;
+    const fallback = priceByKey.get(normKey(h.name));
+    const p = exact || fallback;
 
-    const currentPrice = p ? p.price : h._csvPrice;
-    const currentCurrency = p ? p.currency : h.currency;
+    // price: brug prices.json hvis muligt, ellers CSV-kurs
+    const price = Number.isFinite(p?.price) ? Number(p.price) : h._csvPrice;
 
-    // buyPrice/quantity kommer ALTID fra CSV (ikke fra prices.json)
+    // currency: brug prices.json currency hvis findes, ellers CSV currency
+    const currency = (p?.currency || h.currency || "DKK").toUpperCase();
+
     return {
       name: h.name,
-      currency: currentCurrency,
-      price: Number(currentPrice),
-      buyPrice: Number(h.buyPrice),
-      quantity: Number(h.quantity)
+      currency,
+      price,
+      buyPrice: h.buyPrice,
+      quantity: h.quantity
     };
   });
 
   return {
     updatedAt: pricesUpdatedAt,
-    source: `merged(${pricesSource}+fonde.csv)`,
+    source: `merged(${pricesSource}+csv)`,
     items: mergedItems
   };
 }
