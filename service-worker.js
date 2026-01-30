@@ -1,12 +1,9 @@
 /* =========================================================
    service-worker.js
-   Formål:
-   - Cache PWA-filer
-   - Network-first for data/prices.json (så “Opdater” får friske tal)
-   - Cache-version bump ved ændringer (så CSS/JS ikke hænger fast)
+   - Network-first for HTML/CSS/JS så opdateringer slår igennem
    ========================================================= */
 
-const CACHE_NAME = "aktie-app-v3"; // <- BUMP version når vi ændrer CSS/JS
+const CACHE_NAME = "aktieapp-v2026-01-30-1";
 
 const CORE_ASSETS = [
   "./",
@@ -17,10 +14,12 @@ const CORE_ASSETS = [
   "./js/main.js",
   "./js/api.js",
   "./js/ui.js",
-  "./data/prices.json",
-  "./data/fonde.csv",
+  "./img/icon.png",
+  "./img/refresh.png",
+  "./img/pdf.png",
+  "./img/chart.png",
   "./manifest.webmanifest"
-].map((p) => p.replace(/^\.\/\//, "./"));
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -39,24 +38,22 @@ self.addEventListener("activate", (event) => {
 });
 
 async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
   try {
     const fresh = await fetch(request, { cache: "no-store" });
-    const cache = await caches.open(CACHE_NAME);
     cache.put(request, fresh.clone());
     return fresh;
-  } catch (err) {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    throw err;
+  } catch (e) {
+    const cached = await cache.match(request);
+    return cached || Response.error();
   }
 }
 
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
-  const fresh = await fetch(request);
   const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const fresh = await fetch(request);
   cache.put(request, fresh.clone());
   return fresh;
 }
@@ -64,12 +61,17 @@ async function cacheFirst(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Network-first for priser (så “Opdater” får det nyeste)
-  if (url.pathname.endsWith("/data/prices.json")) {
+  // Kun vores eget site
+  if (url.origin !== location.origin) return;
+
+  const path = url.pathname;
+
+  // Network-first for HTML/CSS/JS (så farver og knapper opdaterer)
+  if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // Default: cache-first for resten
+  // Billeder: cache-first er fint
   event.respondWith(cacheFirst(event.request));
 });
