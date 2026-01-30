@@ -1,69 +1,91 @@
+/*
+=========================================================
+css/style.css
+FORMÅL:
+- Basis layout (body/app/header) så alt står stabilt
+- INGEN override af knapfarver (det styres i components.css)
+- Holder “app-look” i både lys og mørk
+=========================================================
+*/
+
 /* =========================================================
-   css/style.css
+   AFSNIT 01 – Basis (body + font)
    ========================================================= */
-
-/* =========================
-   AFSNIT 01 – Base
-   ========================= */
-
-:root{
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+html, body{
+  height: 100%;
 }
 
 body{
-  margin:0;
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
 }
 
-/* =========================
-   AFSNIT 02 – Blink/feedback
-   ========================= */
-
-@keyframes flashPulse {
-  0%   { box-shadow: 0 0 0 rgba(0,191,255,0.00); }
-  25%  { box-shadow: 0 0 0 6px rgba(0,191,255,0.18); }
-  100% { box-shadow: 0 0 0 rgba(0,191,255,0.00); }
+/* =========================================================
+   AFSNIT 02 – App wrapper
+   ========================================================= */
+.app{
+  padding: 18px 0 36px;
 }
 
-/* Render-containeren blinker ved opdatering */
-.flash{
-  animation: flashPulse 0.55s ease-out;
+/* =========================================================
+   AFSNIT 03 – Header (titel + theme-knap)
+   ========================================================= */
+.header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 6px auto 10px;
 }
 
-/* =========================
-   AFSNIT 03 – Ghost knapper (PDF/Graf/Luk)
-   Mål:
-   - Dark: blå knap (ikke grå)
-   - Light: rolig blå, tydelig
-   ========================= */
-
-button.ghost {
-  /* Dark default */
-  background: #0f6ea8 !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(0,191,255,0.40) !important;
-  box-shadow: 0 10px 22px rgba(0,191,255,0.18) !important;
+.title{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-html[data-theme="light"] button.ghost {
-  background: #0b6fa8 !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(11,111,168,0.28) !important;
-  box-shadow: 0 10px 22px rgba(11,111,168,0.12) !important;
+.logo{
+  font-size: 22px;
+  line-height: 1;
 }
 
-/* Hover lidt mere “app-agtigt” */
-button.ghost:hover{
-  filter: brightness(1.05);
+/* Sørger for at title ikke skubber theme-knappen ud af sync */
+.title h1{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* =========================
-   AFSNIT 04 – (Din eksisterende CSS under her)
-   VIGTIGT: Lad resten være som den var.
-   ========================= */
+/* =========================================================
+   AFSNIT 04 – Små tekstting
+   ========================================================= */
+.hint{
+  text-align: center;
+}
 
-/* NOTE:
-   Her skal du beholde resten af din eksisterende style.css,
-   UDEN at ændre noget andet.
-   Hvis du vil, kan jeg samle hele din komplette style.css i én fil
-   (men jeg skal have den aktuelle style.css fra repo'et, ikke kun uddrag).
-*/
+/* =========================================================
+   AFSNIT 05 – Graf (canvas baggrund + læsbarhed)
+   Bemærk: Selve graf-farver styres i JS.
+   Her sikrer vi bare at canvas har “kort”-look
+   ========================================================= */
+#graphCanvas{
+  display: block;
+  width: 100%;
+  height: auto;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+}
+
+/* Light mode: canvas får en smule mere kontrast */
+html[data-theme="light"] #graphCanvas{
+  background: rgba(0,0,0,0.02);
+}
+
+/* =========================================================
+   AFSNIT 06 – SIKKERHED: Overstyr IKKE knapfarver her
+   (Knapper styres i components.css)
+   ========================================================= */
+/* (Bevidst tomt) */
