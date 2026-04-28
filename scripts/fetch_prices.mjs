@@ -1,8 +1,13 @@
 /* =========================================================
    scripts/fetch_prices.mjs
-   Henter seneste kurser (multi-source via Yahoo symbols)
-   Gemmer 10 seneste punkter pr fond i data/prices.json
+   Henter seneste kurser til aktie-app
+   Gemmer 10 seneste punkter pr. fond i data/prices.json
    Node 20+ (GitHub Actions)
+
+   VIGTIGT:
+   - Denne version bruger flere kilder.
+   - "previous" bruges kun som nødbackup.
+   - Hele filen er skrevet som fuld erstatning.
    ========================================================= */
 
 /* =========================
@@ -19,7 +24,20 @@ const DATA_DIR = path.join(ROOT, "data");
 const PRICES_PATH = path.join(DATA_DIR, "prices.json");
 
 /* =========================
-   AFSNIT 03 – Helpers (dato/tid)
+   AFSNIT 03 – Konstanter
+   ========================= */
+const STATIC_EUR_TO_DKK = 7.45;
+
+const HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
+  "Accept-Language": "da-DK,da;q=0.9,en-US;q=0.8,en;q=0.7"
+};
+
+/* =========================
+   AFSNIT 04 – Hjælpefunktioner
    ========================= */
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -29,29 +47,70 @@ function nowIsoUtc() {
   return new Date().toISOString();
 }
 
-// Dagsdato i DK (lokal dato), så “10 seneste” bliver pr dag
 function dkDateYYYYMMDD(date = new Date()) {
   const dk = new Date(
     date.toLocaleString("en-US", { timeZone: "Europe/Copenhagen" })
   );
+
   const y = dk.getFullYear();
   const m = pad2(dk.getMonth() + 1);
   const d = pad2(dk.getDate());
+
   return `${y}-${m}-${d}`;
 }
 
-function asNumber(x) {
-  const n = Number(x);
+function asNumber(value) {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const cleaned = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
+function formatError(e) {
+  return String(e?.message || e || "Ukendt fejl");
+}
+
+function stripHtml(html) {
+  return String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#x2F;/gi, "/")
+    .replace(/&#47;/gi, "/")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findFirstNumberAfter(text, startText, wordsAfter = 40) {
+  const idx = text.toLowerCase().indexOf(startText.toLowerCase());
+  if (idx < 0) return null;
+
+  const part = text.slice(idx, idx + wordsAfter * 25);
+  const match = part.match(/(\d{1,4}(?:[.,]\d{1,6}))/);
+
+  return match ? asNumber(match[1]) : null;
+}
+
 function uniqByDateKeepLast(arr) {
-  // hvis samme dato findes flere gange, behold den sidste
   const map = new Map();
+
   for (const p of arr || []) {
     if (!p?.date) continue;
     map.set(p.date, p);
   }
+
   return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -61,7 +120,7 @@ function keepLastN(arr, n = 10) {
 }
 
 /* =========================
-   AFSNIT 04 – Load/Save JSON
+   AFSNIT 05 – JSON Load/Save
    ========================= */
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
@@ -78,133 +137,217 @@ async function readJsonSafe(filePath, fallback) {
 
 async function writeJsonPretty(filePath, obj) {
   await ensureDir(path.dirname(filePath));
+
   const txt = JSON.stringify(obj, null, 2) + "\n";
   await fs.writeFile(filePath, txt, "utf-8");
 }
 
 /* =========================
-   AFSNIT 05 – Yahoo fetch (quote)
+   AFSNIT 06 – HTTP Fetch
    ========================= */
-// Yahoo endpoint uden API key
-// https://query1.finance.yahoo.com/v7/finance/quote?symbols=SYMBOL
-async function fetchYahooQuote(symbol) {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
-    symbol
-  )}`;
-
+async function fetchText(url) {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; Aktie-App/1.0)"
-    }
+    headers: HEADERS,
+    redirect: "follow"
   });
 
   if (!res.ok) {
-    throw new Error(`Yahoo HTTP ${res.status} for ${symbol}`);
+    throw new Error(`HTTP ${res.status} ved hentning af ${url}`);
   }
 
-  const data = await res.json();
-  const result = data?.quoteResponse?.result?.[0];
-  if (!result) {
-    throw new Error(`Yahoo: no result for ${symbol}`);
-  }
-
-  const price = asNumber(result.regularMarketPrice ?? result.postMarketPrice);
-  const currency = result.currency || null;
-
-  // regularMarketTime er epoch-sekunder
-  const marketTimeSec = asNumber(result.regularMarketTime);
-  const marketTimeISO =
-    marketTimeSec ? new Date(marketTimeSec * 1000).toISOString() : null;
-
-  if (!price) {
-    throw new Error(`Yahoo: missing price for ${symbol}`);
-  }
-
-  return {
-    symbol,
-    price,
-    currency,
-    marketTimeISO
-  };
+  return await res.text();
 }
 
 /* =========================
-   AFSNIT 06 – Fund definitions
+   AFSNIT 07 – Datakilder
    ========================= */
-/**
- * VIGTIGT:
- * - Jeg bruger flere Yahoo-symboler pr fond som fallback.
- * - Hvis et symbol ikke findes, prøver den næste automatisk.
- *
- * Hvis du vil ændre/tilføje symboler:
- * - Find symbolet på Yahoo Finance og indsæt her.
- */
+async function fetchNordeaInvestTodayRate(fundName) {
+  const url = "https://www.nordeafunds.com/da/investorinformation/dagens-kurser";
+  const html = await fetchText(url);
+  const text = stripHtml(html);
+
+  const idx = text.toLowerCase().indexOf(fundName.toLowerCase());
+  if (idx < 0) {
+    throw new Error(`Nordea dagens kurser: fandt ikke "${fundName}"`);
+  }
+
+  const area = text.slice(idx, idx + 600);
+
+  const innerValueMatch = area.match(/Indre værdi\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
+  const sellMatch = area.match(/Salgskurs\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
+  const buyMatch = area.match(/Købskurs\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
+
+  const price =
+    asNumber(innerValueMatch?.[1]) ||
+    asNumber(sellMatch?.[1]) ||
+    asNumber(buyMatch?.[1]);
+
+  if (!price) {
+    throw new Error(`Nordea dagens kurser: fandt ingen kurs for "${fundName}"`);
+  }
+
+  return {
+    price,
+    currency: "DKK",
+    source: "nordea-dagens-kurser",
+    marketTimeISO: nowIsoUtc()
+  };
+}
+
+async function fetchNordnetRate(url, expectedCurrency) {
+  const html = await fetchText(url);
+  const text = stripHtml(html);
+
+  const currencyPattern = expectedCurrency === "EUR" ? "EUR" : "DKK";
+
+  const regex = new RegExp(
+    `(\\d{1,4}(?:[.,]\\d{1,6}))\\s*${currencyPattern}`,
+    "i"
+  );
+
+  const match = text.match(regex);
+  const price = asNumber(match?.[1]);
+
+  if (!price) {
+    throw new Error(`Nordnet: fandt ingen ${currencyPattern}-kurs`);
+  }
+
+  return {
+    price,
+    currency: expectedCurrency,
+    source: "nordnet",
+    marketTimeISO: nowIsoUtc()
+  };
+}
+
+async function fetchFinanzenFundRate(url, expectedCurrency) {
+  const html = await fetchText(url);
+  const text = stripHtml(html);
+
+  const currencyPattern = expectedCurrency === "EUR" ? "EUR" : "DKK";
+
+  const regexes = [
+    new RegExp(`bei\\s+(\\d{1,4}(?:[.,]\\d{1,6}))\\s+${currencyPattern}`, "i"),
+    new RegExp(`(\\d{1,4}(?:[.,]\\d{1,6}))\\s+${currencyPattern}`, "i")
+  ];
+
+  for (const regex of regexes) {
+    const match = text.match(regex);
+    const price = asNumber(match?.[1]);
+
+    if (price) {
+      return {
+        price,
+        currency: expectedCurrency,
+        source: "finanzen",
+        marketTimeISO: nowIsoUtc()
+      };
+    }
+  }
+
+  throw new Error(`Finanzen: fandt ingen ${currencyPattern}-kurs`);
+}
+
+/* =========================
+   AFSNIT 08 – Fund definitions
+   ========================= */
 const FUNDS = [
   {
     name: "Nordea Empower Europe Fund BQ",
     isin: "LU3076185670",
     currency: "EUR",
-    yahooSymbols: [
-      // du har vist disse i dine screenshots
-      "LU3076185084:EUR",
-      "LU3076185670:EUR"
+    sources: [
+      {
+        type: "finanzen",
+        url: "https://www.finanzen.net/fonds/nordea-1-empower-europe-bq-lu3076185670"
+      }
     ]
   },
   {
     name: "Nordea Invest Europe Enhanced KL 1",
     isin: "DK0060949964",
     currency: "DKK",
-    yahooSymbols: [
-      // typiske varianter – vi prøver flere:
-      "DK0060949964",
-      "DK0060949964.CO",
-      "0P0000XXXX.F" // placeholder (ignoreres hvis Yahoo ikke kender den)
+    sources: [
+      {
+        type: "nordea-today",
+        fundName: "Europe Enhanced KL 1"
+      },
+      {
+        type: "nordnet",
+        url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-europe-enhanced-ndieuenhkl1-xcse"
+      }
     ]
   },
   {
     name: "Nordea Invest Global Enhanced KL 1",
     isin: "DK0060949881",
     currency: "DKK",
-    yahooSymbols: [
-      "DK0060949881",
-      "DK0060949881.CO",
-      "FI4000261300:EUR" // fallback (hvis DKK ikke findes, får vi i det mindste en reference)
+    sources: [
+      {
+        type: "nordea-today",
+        fundName: "Global Enhanced KL 1"
+      },
+      {
+        type: "nordnet",
+        url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-global-enhanced-ndiglenhkl1-xcse"
+      }
     ]
   }
 ];
 
 /* =========================
-   AFSNIT 07 – Resolve latest price per fund
+   AFSNIT 09 – Kursopslag
    ========================= */
+async function fetchFromSource(source, fund) {
+  if (source.type === "nordea-today") {
+    return await fetchNordeaInvestTodayRate(source.fundName);
+  }
+
+  if (source.type === "nordnet") {
+    return await fetchNordnetRate(source.url, fund.currency);
+  }
+
+  if (source.type === "finanzen") {
+    return await fetchFinanzenFundRate(source.url, fund.currency);
+  }
+
+  throw new Error(`Ukendt kilde: ${source.type}`);
+}
+
 async function resolveFundPrice(fund) {
   const attempts = [];
 
-  for (const sym of fund.yahooSymbols || []) {
-    // Ignorer tydelige placeholders
-    if (!sym || sym.includes("XXXX")) continue;
-
+  for (const source of fund.sources || []) {
     try {
-      const q = await fetchYahooQuote(sym);
-      attempts.push({ ok: true, ...q });
-      // Vi accepterer første succes
+      const result = await fetchFromSource(source, fund);
+
+      attempts.push({
+        ok: true,
+        source: result.source,
+        price: result.price,
+        currency: result.currency
+      });
+
       return {
         ok: true,
-        source: "yahoo",
-        symbol: q.symbol,
-        price: q.price,
-        currency: q.currency || fund.currency,
-        marketTimeISO: q.marketTimeISO,
+        source: result.source,
+        price: result.price,
+        currency: result.currency || fund.currency,
+        marketTimeISO: result.marketTimeISO || nowIsoUtc(),
         attempts
       };
     } catch (e) {
-      attempts.push({ ok: false, symbol: sym, error: String(e?.message || e) });
+      attempts.push({
+        ok: false,
+        source: source.type,
+        error: formatError(e)
+      });
     }
   }
 
   return {
     ok: false,
-    source: "yahoo",
-    symbol: null,
+    source: "previous",
     price: null,
     currency: fund.currency,
     marketTimeISO: null,
@@ -213,19 +356,30 @@ async function resolveFundPrice(fund) {
 }
 
 /* =========================
-   AFSNIT 08 – History update (10 seneste)
+   AFSNIT 10 – Historik
    ========================= */
 function updateHistory(prevHistory, dateYYYYMMDD, price) {
+  const finalPrice = asNumber(price);
+
+  if (!finalPrice) {
+    return keepLastN(uniqByDateKeepLast(prevHistory || []), 10);
+  }
+
   const base = Array.isArray(prevHistory) ? prevHistory : [];
+
   const next = uniqByDateKeepLast([
     ...base,
-    { date: dateYYYYMMDD, price: Number(price) }
+    {
+      date: dateYYYYMMDD,
+      price: finalPrice
+    }
   ]);
+
   return keepLastN(next, 10);
 }
 
 /* =========================
-   AFSNIT 09 – Main
+   AFSNIT 11 – Main
    ========================= */
 async function main() {
   const prev = await readJsonSafe(PRICES_PATH, {
@@ -235,28 +389,26 @@ async function main() {
   });
 
   const prevItems = Array.isArray(prev?.items) ? prev.items : [];
+
   const prevByIsin = new Map(
-    prevItems
-      .filter((x) => x?.isin)
-      .map((x) => [x.isin, x])
+    prevItems.filter((x) => x?.isin).map((x) => [x.isin, x])
   );
 
   const today = dkDateYYYYMMDD(new Date());
-
   const results = [];
+
   let maxMarketTimeISO = null;
 
   for (const fund of FUNDS) {
     const resolved = await resolveFundPrice(fund);
-
     const prevItem = prevByIsin.get(fund.isin) || null;
     const fallbackPrice = asNumber(prevItem?.price);
 
-    // Hvis Yahoo fejler, behold sidste kendte pris (så appen ikke går i stykker)
     const finalPrice = resolved.ok ? resolved.price : fallbackPrice;
+    const finalCurrency = resolved.currency || fund.currency;
 
-    // Opdater max “seneste handelsdag”
-    const mt = resolved.marketTimeISO || prevItem?.updatedAt || null;
+    const mt = resolved.marketTimeISO || prevItem?.updatedAt || nowIsoUtc();
+
     if (mt && (!maxMarketTimeISO || mt > maxMarketTimeISO)) {
       maxMarketTimeISO = mt;
     }
@@ -266,12 +418,10 @@ async function main() {
     results.push({
       name: fund.name,
       isin: fund.isin,
-      currency: fund.currency,
+      currency: finalCurrency,
       price: finalPrice,
-      // gem “seneste markeds-tid” pr fond hvis vi har den
-      updatedAt: mt || nowIsoUtc(),
-      source: resolved.ok ? `yahoo:${resolved.symbol}` : "previous",
-      // debug (kan fjernes senere) – men mega nyttigt til kvalitetssikring
+      updatedAt: mt,
+      source: resolved.ok ? resolved.source : "previous",
       debug: {
         attempts: resolved.attempts
       },
@@ -282,6 +432,7 @@ async function main() {
   const out = {
     updatedAt: maxMarketTimeISO || nowIsoUtc(),
     source: "github-action",
+    eurToDkk: STATIC_EUR_TO_DKK,
     items: results
   };
 
@@ -289,6 +440,7 @@ async function main() {
 
   console.log("✅ Wrote", PRICES_PATH);
   console.log("updatedAt:", out.updatedAt);
+
   for (const it of out.items) {
     console.log("-", it.name, it.price, it.currency, it.source);
   }
