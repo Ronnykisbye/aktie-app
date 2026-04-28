@@ -158,9 +158,10 @@ async function main() {
   }
 
   const out = {
-    updatedAt,
-    source: "manual-intraday",
-    items: results
+  updatedAt,
+  source: "manual-intraday",
+  runId: Date.now(), // 🔥 tvinger ændring hver gang
+  items: results
   };
 
   await writeJson(PRICES_PATH, out);
