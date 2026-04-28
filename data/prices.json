@@ -1,29 +1,35 @@
 {
-  "updatedAt": "2026-04-28T10:09:53.904Z",
-  "source": "github-action",
+  "updatedAt": "2026-04-28T10:27:19.447Z",
+  "source": "manual",
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
-      "isin": "LU3076185670",
       "currency": "EUR",
-      "price": null,
-      "updatedAt": "2026-04-28T10:09:52.303Z",
-      "source": "failed",
+      "price": 116.01,
+      "updatedAt": "2026-04-28T10:27:19.447Z",
+      "source": "manual",
       "history": [
         {
           "date": "2026-04-28",
           "price": null
+        },
+        {
+          "date": "2026-04-28",
+          "price": 116.01
         }
       ]
     },
     {
       "name": "Nordea Invest Europe Enhanced KL 1",
-      "isin": "DK0060949964",
       "currency": "DKK",
       "price": 141.88,
-      "updatedAt": "2026-04-28T10:09:53.597Z",
-      "source": "fallback",
+      "updatedAt": "2026-04-28T10:27:19.447Z",
+      "source": "manual",
       "history": [
+        {
+          "date": "2026-04-28",
+          "price": 141.88
+        },
         {
           "date": "2026-04-28",
           "price": 141.88
@@ -32,12 +38,15 @@
     },
     {
       "name": "Nordea Invest Global Enhanced KL 1",
-      "isin": "DK0060949881",
       "currency": "DKK",
       "price": 213.49,
-      "updatedAt": "2026-04-28T10:09:53.904Z",
-      "source": "fallback",
+      "updatedAt": "2026-04-28T10:27:19.447Z",
+      "source": "manual",
       "history": [
+        {
+          "date": "2026-04-28",
+          "price": 213.49
+        },
         {
           "date": "2026-04-28",
           "price": 213.49
