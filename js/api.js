@@ -4,11 +4,10 @@ AFSNIT 01 – Imports
 import { PRICES_JSON_PATH, CSV_PATH } from "./config.js";
 
 /*
-AFSNIT 02 – Helpers (tid/cache/fetch)
+AFSNIT 02 – Helpers
 */
 const nowIso = () => new Date().toISOString();
 
-// Cache-busting
 function cacheBust(url) {
   return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
 }
@@ -42,11 +41,12 @@ function toNumberSmart(v) {
 
   const cleaned = s.replace(/\./g, "").replace(",", ".");
   const n = Number(cleaned);
+
   return Number.isFinite(n) ? n : NaN;
 }
 
 /*
-AFSNIT 03 – FAST VALUTAKURS (INGEN API)
+AFSNIT 03 – Fast EUR til DKK
 */
 const EUR_TO_DKK = 7.45;
 
@@ -73,12 +73,14 @@ function parseCsvLine(line, delim) {
 
     if (ch === '"') {
       const next = line[i + 1];
+
       if (inQuotes && next === '"') {
         cur += '"';
         i++;
       } else {
         inQuotes = !inQuotes;
       }
+
       continue;
     }
 
@@ -97,28 +99,36 @@ function parseCsvLine(line, delim) {
 
 function parseCsv(csvText) {
   const text = String(csvText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
   if (!lines.length) return [];
 
   const delim = detectDelimiter(lines[0]);
   const headers = parseCsvLine(lines[0], delim);
 
   const rows = [];
+
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i], delim);
     if (!cols.length) continue;
 
     const row = {};
+
     for (let c = 0; c < headers.length; c++) {
       row[headers[c]] = cols[c] ?? "";
     }
+
     rows.push(row);
   }
+
   return rows;
 }
 
 /*
-AFSNIT 05 – Merge data
+AFSNIT 05 – Merge: CSV + prices.json
 */
 export async function getLatestHoldingsPrices() {
   const csvText = await fetchText(CSV_PATH);
@@ -154,8 +164,12 @@ export async function getLatestHoldingsPrices() {
 
       const obj = {
         name: n,
+        isin: it?.isin || "",
         currency: String(it?.currency || "DKK").toUpperCase(),
-        price: Number(it?.price)
+        price: Number(it?.price),
+        updatedAt: it?.updatedAt || pricesUpdatedAt,
+        source: it?.source || pricesSource,
+        history: Array.isArray(it?.history) ? it.history : []
       };
 
       priceByExactName.set(n, obj);
@@ -175,16 +189,24 @@ export async function getLatestHoldingsPrices() {
 
     return {
       name: h.name,
+      isin: p?.isin || "",
       currency,
       price,
       buyPrice: h.buyPrice,
-      quantity: h.quantity
+      quantity: h.quantity,
+      updatedAt: p?.updatedAt || pricesUpdatedAt,
+      source: p?.source || pricesSource,
+      history: Array.isArray(p?.history) ? p.history : []
     };
   });
 
   return {
     updatedAt: pricesUpdatedAt,
     source: `merged(${pricesSource}+csv)`,
+    meta: {
+      githubUpdatedISO: pricesUpdatedAt,
+      lastTradingDayISO: pricesUpdatedAt
+    },
     items: mergedItems
   };
 }
