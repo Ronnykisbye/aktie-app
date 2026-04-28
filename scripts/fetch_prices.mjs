@@ -162,7 +162,7 @@ async function main() {
   source: "manual-intraday",
   runId: Date.now(), // 🔥 tvinger ændring hver gang
   items: results
-  };
+};
 
   await writeJson(PRICES_PATH, out);
 
