@@ -1,6 +1,6 @@
 /* =========================================================
    scripts/fetch_prices.mjs
-   STABIL VERSION MED INTRADAY HISTORIK
+   INTRADAY VERSION (FIXET TIMESTAMP)
    ========================================================= */
 
 import fs from "fs/promises";
@@ -40,25 +40,10 @@ const FUNDS = [
 ];
 
 /* =========================
-   AFSNIT 01 – Tid (DK med klokkeslæt)
+   AFSNIT 01 – UNIK TIMESTAMP
    ========================= */
-function nowDK() {
-  const dk = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Europe/Copenhagen" })
-  );
-
-  const y = dk.getFullYear();
-  const m = String(dk.getMonth() + 1).padStart(2, "0");
-  const d = String(dk.getDate()).padStart(2, "0");
-
-  const h = String(dk.getHours()).padStart(2, "0");
-  const min = String(dk.getMinutes()).padStart(2, "0");
-
-  return `${y}-${m}-${d} ${h}:${min}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
+function nowTimestamp() {
+  return new Date().toISOString(); // 🔥 altid unik
 }
 
 /* =========================
@@ -95,7 +80,7 @@ function isValidPrice(fund, price) {
 }
 
 /* =========================
-   AFSNIT 04 – HISTORIK (INTRADAY)
+   AFSNIT 04 – HISTORIK
    ========================= */
 function addHistoryPoint(history, timestamp, price) {
   const clean = Array.isArray(history)
@@ -107,7 +92,6 @@ function addHistoryPoint(history, timestamp, price) {
     price
   });
 
-  // behold sidste 50 punkter
   return clean.slice(-50);
 }
 
@@ -130,8 +114,8 @@ async function main() {
       .map((x) => [String(x.isin).trim(), x])
   );
 
-  const timestamp = nowDK();
-  const updatedAt = nowIso();
+  const timestamp = nowTimestamp(); // 🔥 her sker magien
+  const updatedAt = new Date().toISOString();
 
   const results = [];
 
@@ -181,7 +165,7 @@ async function main() {
 
   await writeJson(PRICES_PATH, out);
 
-  console.log("✅ Intraday historik OK");
+  console.log("✅ Timestamp FIXED");
 }
 
 main().catch((error) => {
