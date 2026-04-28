@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-28T11:27:22.009Z",
+  "updatedAt": "2026-04-28T11:32:41.762Z",
   "source": "manual-intraday",
   "items": [
     {
@@ -7,11 +7,15 @@
       "isin": "LU3076185670",
       "currency": "EUR",
       "price": 116.01,
-      "updatedAt": "2026-04-28T11:27:22.009Z",
+      "updatedAt": "2026-04-28T11:32:41.762Z",
       "source": "manual",
       "history": [
         {
           "date": "2026-04-28 13:27",
+          "price": 116.01
+        },
+        {
+          "date": "2026-04-28 13:32",
           "price": 116.01
         }
       ]
@@ -21,11 +25,15 @@
       "isin": "DK0060949964",
       "currency": "DKK",
       "price": 141.88,
-      "updatedAt": "2026-04-28T11:27:22.009Z",
+      "updatedAt": "2026-04-28T11:32:41.762Z",
       "source": "manual",
       "history": [
         {
           "date": "2026-04-28 13:27",
+          "price": 141.88
+        },
+        {
+          "date": "2026-04-28 13:32",
           "price": 141.88
         }
       ]
@@ -35,11 +43,15 @@
       "isin": "DK0060949881",
       "currency": "DKK",
       "price": 213.49,
-      "updatedAt": "2026-04-28T11:27:22.009Z",
+      "updatedAt": "2026-04-28T11:32:41.762Z",
       "source": "manual",
       "history": [
         {
           "date": "2026-04-28 13:27",
+          "price": 213.49
+        },
+        {
+          "date": "2026-04-28 13:32",
           "price": 213.49
         }
       ]
