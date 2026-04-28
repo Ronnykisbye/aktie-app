@@ -1,13 +1,14 @@
 /* =========================================================
    scripts/fetch_prices.mjs
-   Henter seneste kurser til aktie-app
+   Henter seneste fondskurser til aktie-app
    Gemmer 10 seneste punkter pr. fond i data/prices.json
-   Node 20+ (GitHub Actions)
+   Node 20+ / GitHub Actions
 
-   VIGTIGT:
-   - Denne version bruger flere kilder.
-   - "previous" bruges kun som nødbackup.
-   - Hele filen er skrevet som fuld erstatning.
+   AFSNIT-OPDELING:
+   - Ingen Yahoo
+   - Ingen browser-CORS
+   - Flere offentlige kilder pr. fond
+   - "previous" bruges kun som nødbackup
    ========================================================= */
 
 /* =========================
@@ -24,10 +25,8 @@ const DATA_DIR = path.join(ROOT, "data");
 const PRICES_PATH = path.join(DATA_DIR, "prices.json");
 
 /* =========================
-   AFSNIT 03 – Konstanter
+   AFSNIT 03 – HTTP headers
    ========================= */
-const STATIC_EUR_TO_DKK = 7.45;
-
 const HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
@@ -37,7 +36,7 @@ const HEADERS = {
 };
 
 /* =========================
-   AFSNIT 04 – Hjælpefunktioner
+   AFSNIT 04 – Dato og tal
    ========================= */
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -69,7 +68,7 @@ function asNumber(value) {
   const cleaned = String(value)
     .trim()
     .replace(/\s/g, "")
-    .replace(/\./g, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
     .replace(",", ".");
 
   const n = Number(cleaned);
@@ -80,6 +79,9 @@ function formatError(e) {
   return String(e?.message || e || "Ukendt fejl");
 }
 
+/* =========================
+   AFSNIT 05 – HTML tekst
+   ========================= */
 function stripHtml(html) {
   return String(html || "")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -87,40 +89,44 @@ function stripHtml(html) {
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
-    .replace(/&#x2F;/gi, "/")
-    .replace(/&#47;/gi, "/")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function findFirstNumberAfter(text, startText, wordsAfter = 40) {
-  const idx = text.toLowerCase().indexOf(startText.toLowerCase());
-  if (idx < 0) return null;
+function findNumberNear(text, keywords) {
+  const lower = text.toLowerCase();
 
-  const part = text.slice(idx, idx + wordsAfter * 25);
-  const match = part.match(/(\d{1,4}(?:[.,]\d{1,6}))/);
+  for (const keyword of keywords) {
+    const idx = lower.indexOf(keyword.toLowerCase());
 
-  return match ? asNumber(match[1]) : null;
-}
+    if (idx < 0) continue;
 
-function uniqByDateKeepLast(arr) {
-  const map = new Map();
+    const area = text.slice(idx, idx + 500);
 
-  for (const p of arr || []) {
-    if (!p?.date) continue;
-    map.set(p.date, p);
+    const match = area.match(/(\d{1,5}(?:[.,]\d{1,6}))/);
+
+    const number = asNumber(match?.[1]);
+
+    if (number) return number;
   }
 
-  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  return null;
 }
 
-function keepLastN(arr, n = 10) {
-  if (!Array.isArray(arr)) return [];
-  return arr.slice(Math.max(0, arr.length - n));
+function findCurrencyNumber(text, currency) {
+  const regex = new RegExp(
+    `(\\d{1,5}(?:[.,]\\d{1,6}))\\s*${currency}`,
+    "i"
+  );
+
+  const match = text.match(regex);
+  return asNumber(match?.[1]);
 }
 
 /* =========================
-   AFSNIT 05 – JSON Load/Save
+   AFSNIT 06 – JSON load/save
    ========================= */
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
@@ -143,7 +149,7 @@ async function writeJsonPretty(filePath, obj) {
 }
 
 /* =========================
-   AFSNIT 06 – HTTP Fetch
+   AFSNIT 07 – Fetch tekst
    ========================= */
 async function fetchText(url) {
   const res = await fetch(url, {
@@ -159,97 +165,94 @@ async function fetchText(url) {
 }
 
 /* =========================
-   AFSNIT 07 – Datakilder
+   AFSNIT 08 – Kilde: Financial Times
    ========================= */
-async function fetchNordeaInvestTodayRate(fundName) {
-  const url = "https://www.nordeafunds.com/da/investorinformation/dagens-kurser";
+async function fetchFromFT(url, expectedCurrency) {
   const html = await fetchText(url);
   const text = stripHtml(html);
 
-  const idx = text.toLowerCase().indexOf(fundName.toLowerCase());
-  if (idx < 0) {
-    throw new Error(`Nordea dagens kurser: fandt ikke "${fundName}"`);
-  }
+  const keywords = [
+    "Last price",
+    "NAV",
+    "Price",
+    "Close",
+    "Previous close"
+  ];
 
-  const area = text.slice(idx, idx + 600);
+  const nearNumber = findNumberNear(text, keywords);
+  const currencyNumber = findCurrencyNumber(text, expectedCurrency);
 
-  const innerValueMatch = area.match(/Indre værdi\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
-  const sellMatch = area.match(/Salgskurs\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
-  const buyMatch = area.match(/Købskurs\s+(\d{1,4}(?:[.,]\d{1,6}))/i);
-
-  const price =
-    asNumber(innerValueMatch?.[1]) ||
-    asNumber(sellMatch?.[1]) ||
-    asNumber(buyMatch?.[1]);
+  const price = nearNumber || currencyNumber;
 
   if (!price) {
-    throw new Error(`Nordea dagens kurser: fandt ingen kurs for "${fundName}"`);
-  }
-
-  return {
-    price,
-    currency: "DKK",
-    source: "nordea-dagens-kurser",
-    marketTimeISO: nowIsoUtc()
-  };
-}
-
-async function fetchNordnetRate(url, expectedCurrency) {
-  const html = await fetchText(url);
-  const text = stripHtml(html);
-
-  const currencyPattern = expectedCurrency === "EUR" ? "EUR" : "DKK";
-
-  const regex = new RegExp(
-    `(\\d{1,4}(?:[.,]\\d{1,6}))\\s*${currencyPattern}`,
-    "i"
-  );
-
-  const match = text.match(regex);
-  const price = asNumber(match?.[1]);
-
-  if (!price) {
-    throw new Error(`Nordnet: fandt ingen ${currencyPattern}-kurs`);
+    throw new Error("FT Markets: kunne ikke finde kurs");
   }
 
   return {
     price,
     currency: expectedCurrency,
-    source: "nordnet",
+    source: "ft-markets",
     marketTimeISO: nowIsoUtc()
   };
 }
 
-async function fetchFinanzenFundRate(url, expectedCurrency) {
+/* =========================
+   AFSNIT 09 – Kilde: FundConnect / FundsNow
+   ========================= */
+async function fetchFromFundConnect(url, expectedCurrency) {
   const html = await fetchText(url);
   const text = stripHtml(html);
 
-  const currencyPattern = expectedCurrency === "EUR" ? "EUR" : "DKK";
-
-  const regexes = [
-    new RegExp(`bei\\s+(\\d{1,4}(?:[.,]\\d{1,6}))\\s+${currencyPattern}`, "i"),
-    new RegExp(`(\\d{1,4}(?:[.,]\\d{1,6}))\\s+${currencyPattern}`, "i")
+  const keywords = [
+    "Indre værdi",
+    "NAV",
+    "Seneste kurs",
+    "Kurs",
+    "Price"
   ];
 
-  for (const regex of regexes) {
-    const match = text.match(regex);
-    const price = asNumber(match?.[1]);
+  const nearNumber = findNumberNear(text, keywords);
+  const currencyNumber = findCurrencyNumber(text, expectedCurrency);
 
-    if (price) {
-      return {
-        price,
-        currency: expectedCurrency,
-        source: "finanzen",
-        marketTimeISO: nowIsoUtc()
-      };
-    }
+  const price = nearNumber || currencyNumber;
+
+  if (!price) {
+    throw new Error("FundConnect: kunne ikke finde kurs");
   }
 
-  throw new Error(`Finanzen: fandt ingen ${currencyPattern}-kurs`);
+  return {
+    price,
+    currency: expectedCurrency,
+    source: "fundconnect",
+    marketTimeISO: nowIsoUtc()
+  };
 }
 
 /* =========================
-   AFSNIT 08 – Fund definitions
+   AFSNIT 10 – Kilde: StockEvents
+   ========================= */
+async function fetchFromStockEvents(url, expectedCurrency) {
+  const html = await fetchText(url);
+  const text = stripHtml(html);
+
+  const price =
+    findCurrencyNumber(text, expectedCurrency === "EUR" ? "EUR" : "DKK") ||
+    findNumberNear(text, ["current price", "price", "stock price"]);
+
+  if (!price) {
+    throw new Error("StockEvents: kunne ikke finde kurs");
+  }
+
+  return {
+    price,
+    currency: expectedCurrency,
+    source: "stockevents",
+    marketTimeISO: nowIsoUtc()
+  };
+}
+
+/* =========================
+   AFSNIT 11 – Fonde
    ========================= */
 const FUNDS = [
   {
@@ -258,8 +261,13 @@ const FUNDS = [
     currency: "EUR",
     sources: [
       {
-        type: "finanzen",
-        url: "https://www.finanzen.net/fonds/nordea-1-empower-europe-bq-lu3076185670"
+        type: "fundconnect",
+        url:
+          "https://fundsnow.os.fundconnect.com/solutions/default/fundinfo?clientID=DKNB&currency=EUR&isin=LU3076185670&language=da-DK&shelves=DKNB"
+      },
+      {
+        type: "stockevents",
+        url: "https://stockevents.app/en/stock/LU3076185670.FUND"
       }
     ]
   },
@@ -269,12 +277,14 @@ const FUNDS = [
     currency: "DKK",
     sources: [
       {
-        type: "nordea-today",
-        fundName: "Europe Enhanced KL 1"
+        type: "ft",
+        url:
+          "https://markets.ft.com/data/funds/tearsheet/summary?s=DK0060949964:DKK"
       },
       {
-        type: "nordnet",
-        url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-europe-enhanced-ndieuenhkl1-xcse"
+        type: "fundconnect",
+        url:
+          "https://fundsnow.os.fundconnect.com/solutions/default/fundinfo?clientID=DKNB&currency=DKK&isin=DK0060949964&language=da-DK&shelves=DKNB"
       }
     ]
   },
@@ -284,31 +294,33 @@ const FUNDS = [
     currency: "DKK",
     sources: [
       {
-        type: "nordea-today",
-        fundName: "Global Enhanced KL 1"
+        type: "ft",
+        url:
+          "https://markets.ft.com/data/funds/tearsheet/summary?s=DK0060949881:DKK"
       },
       {
-        type: "nordnet",
-        url: "https://www.nordnet.dk/investeringsforeninger/liste/nordea-invest-global-enhanced-ndiglenhkl1-xcse"
+        type: "fundconnect",
+        url:
+          "https://fundsnow.os.fundconnect.com/solutions/default/fundinfo?clientID=DKNB&currency=DKK&isin=DK0060949881&language=da-DK&shelves=DKNB"
       }
     ]
   }
 ];
 
 /* =========================
-   AFSNIT 09 – Kursopslag
+   AFSNIT 12 – Hent kurs pr. kilde
    ========================= */
 async function fetchFromSource(source, fund) {
-  if (source.type === "nordea-today") {
-    return await fetchNordeaInvestTodayRate(source.fundName);
+  if (source.type === "ft") {
+    return await fetchFromFT(source.url, fund.currency);
   }
 
-  if (source.type === "nordnet") {
-    return await fetchNordnetRate(source.url, fund.currency);
+  if (source.type === "fundconnect") {
+    return await fetchFromFundConnect(source.url, fund.currency);
   }
 
-  if (source.type === "finanzen") {
-    return await fetchFinanzenFundRate(source.url, fund.currency);
+  if (source.type === "stockevents") {
+    return await fetchFromStockEvents(source.url, fund.currency);
   }
 
   throw new Error(`Ukendt kilde: ${source.type}`);
@@ -356,8 +368,24 @@ async function resolveFundPrice(fund) {
 }
 
 /* =========================
-   AFSNIT 10 – Historik
+   AFSNIT 13 – Historik
    ========================= */
+function uniqByDateKeepLast(arr) {
+  const map = new Map();
+
+  for (const p of arr || []) {
+    if (!p?.date) continue;
+    map.set(p.date, p);
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function keepLastN(arr, n = 10) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(Math.max(0, arr.length - n));
+}
+
 function updateHistory(prevHistory, dateYYYYMMDD, price) {
   const finalPrice = asNumber(price);
 
@@ -379,7 +407,7 @@ function updateHistory(prevHistory, dateYYYYMMDD, price) {
 }
 
 /* =========================
-   AFSNIT 11 – Main
+   AFSNIT 14 – Main
    ========================= */
 async function main() {
   const prev = await readJsonSafe(PRICES_PATH, {
@@ -406,7 +434,6 @@ async function main() {
 
     const finalPrice = resolved.ok ? resolved.price : fallbackPrice;
     const finalCurrency = resolved.currency || fund.currency;
-
     const mt = resolved.marketTimeISO || prevItem?.updatedAt || nowIsoUtc();
 
     if (mt && (!maxMarketTimeISO || mt > maxMarketTimeISO)) {
@@ -432,7 +459,6 @@ async function main() {
   const out = {
     updatedAt: maxMarketTimeISO || nowIsoUtc(),
     source: "github-action",
-    eurToDkk: STATIC_EUR_TO_DKK,
     items: results
   };
 
