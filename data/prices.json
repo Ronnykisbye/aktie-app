@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-28T10:02:01.891Z",
+  "updatedAt": "2026-04-28T10:03:21.744Z",
   "source": "github-action",
   "items": [
     {
@@ -7,9 +7,13 @@
       "isin": "DK0060949964",
       "price": 141.88,
       "currency": "DKK",
-      "updatedAt": "2026-04-28T10:02:01.625Z",
+      "updatedAt": "2026-04-28T10:03:21.529Z",
       "source": "ft-markets",
       "history": [
+        {
+          "date": "2026-04-28",
+          "price": 141.88
+        },
         {
           "date": "2026-04-28",
           "price": 141.88
@@ -21,9 +25,13 @@
       "isin": "DK0060949881",
       "price": 213.49,
       "currency": "DKK",
-      "updatedAt": "2026-04-28T10:02:01.891Z",
+      "updatedAt": "2026-04-28T10:03:21.744Z",
       "source": "ft-markets",
       "history": [
+        {
+          "date": "2026-04-28",
+          "price": 213.49
+        },
         {
           "date": "2026-04-28",
           "price": 213.49
