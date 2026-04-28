@@ -1,10 +1,11 @@
 /* =========================================================
    js/ui.js
-   - Udfylder #totalValue, #totalGain, #fundRows, #status
-   - Ingen HTML-injection i tabeldata
-   - Graf:
-     1) Historisk linjegraf hvis history[] findes
-     2) Fallback til søjlegraf hvis der endnu ikke er historik
+   Fancy graf-version
+   - 3 linjer
+   - Hover tooltip
+   - Lodret markør
+   - Neon-look
+   - Ingen søjlegraf fallback
    ========================================================= */
 
 /* =========================
@@ -44,19 +45,8 @@ function fmtShortDKK(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
 
-  if (Math.abs(v) >= 1_000_000) {
-    return `${(v / 1_000_000).toLocaleString("da-DK", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1
-    })} mio.`;
-  }
-
-  if (Math.abs(v) >= 1_000) {
-    return `${(v / 1_000).toLocaleString("da-DK", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    })}k`;
-  }
+  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toLocaleString("da-DK", { maximumFractionDigits: 1 })} mio.`;
+  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toLocaleString("da-DK", { maximumFractionDigits: 0 })}k`;
 
   return fmtDKK(v);
 }
@@ -66,9 +56,7 @@ function toDKK(value, currency, eurDkk) {
   if (!Number.isFinite(v)) return NaN;
 
   const c = String(currency || "DKK").toUpperCase();
-
-  if (c === "EUR") return v * Number(eurDkk);
-  return v;
+  return c === "EUR" ? v * Number(eurDkk) : v;
 }
 
 function theme() {
@@ -79,7 +67,6 @@ function theme() {
 
 function flash(el) {
   if (!el) return;
-
   el.classList.remove("flash");
   void el.offsetWidth;
   el.classList.add("flash");
@@ -98,21 +85,10 @@ function calcCurrentFundNumbers(item, eurDkk) {
   const priceDKK = toDKK(price, currency, eurDkk);
   const buyDKK = toDKK(buy, currency, eurDkk);
 
-  const value =
-    Number.isFinite(qty) && Number.isFinite(priceDKK) ? qty * priceDKK : NaN;
-
-  const purchase =
-    Number.isFinite(qty) && Number.isFinite(buyDKK) ? qty * buyDKK : NaN;
-
-  const gain =
-    Number.isFinite(value) && Number.isFinite(purchase)
-      ? value - purchase
-      : NaN;
-
-  const pct =
-    Number.isFinite(gain) && Number.isFinite(purchase) && purchase !== 0
-      ? (gain / purchase) * 100
-      : NaN;
+  const value = Number.isFinite(qty) && Number.isFinite(priceDKK) ? qty * priceDKK : NaN;
+  const purchase = Number.isFinite(qty) && Number.isFinite(buyDKK) ? qty * buyDKK : NaN;
+  const gain = Number.isFinite(value) && Number.isFinite(purchase) ? value - purchase : NaN;
+  const pct = Number.isFinite(gain) && Number.isFinite(purchase) && purchase !== 0 ? (gain / purchase) * 100 : NaN;
 
   return {
     currency,
@@ -133,7 +109,6 @@ function getAllHistoryDates(list) {
 
   for (const item of list) {
     const history = Array.isArray(item?.history) ? item.history : [];
-
     for (const point of history) {
       if (point?.date) dates.add(point.date);
     }
@@ -146,8 +121,16 @@ function findHistoryPrice(item, date) {
   const history = Array.isArray(item?.history) ? item.history : [];
   const hit = history.find((p) => p?.date === date);
   const price = Number(hit?.price);
-
   return Number.isFinite(price) ? price : null;
+}
+
+function shortName(name) {
+  return String(name || "")
+    .replace(/^Nordea\s+/i, "")
+    .replace(/^Invest\s+/i, "")
+    .replace("Enhanced KL 1", "")
+    .replace("Fund BQ", "")
+    .trim();
 }
 
 /* =========================
@@ -183,7 +166,6 @@ export function renderPortfolio({
 
   for (const it of list) {
     const n = calcCurrentFundNumbers(it, eurDkk);
-
     if (Number.isFinite(n.value)) totalValue += n.value;
     if (Number.isFinite(n.purchase)) totalPurchase += n.purchase;
   }
@@ -216,10 +198,7 @@ export function renderPortfolio({
     tdGain.className = n.gain >= 0 ? "pos" : "neg";
 
     const tdPrice = document.createElement("td");
-    tdPrice.textContent =
-      n.currency === "EUR"
-        ? `${fmtPct(n.price)} EUR`
-        : `${fmtPct(n.price)} DKK`;
+    tdPrice.textContent = n.currency === "EUR" ? `${fmtPct(n.price)} EUR` : `${fmtPct(n.price)} DKK`;
 
     const tdQty = document.createElement("td");
     tdQty.textContent = Number(n.qty).toLocaleString("da-DK");
@@ -233,152 +212,33 @@ export function renderPortfolio({
 }
 
 /* =========================
-   AFSNIT 04 – Canvas tema
+   AFSNIT 04 – Chart theme
    ========================= */
 function getChartTheme() {
   const th = theme();
 
   return {
-    bg: th === "light" ? "rgba(255,255,255,0)" : "rgba(0,0,0,0)",
-    textStrong:
-      th === "light" ? "rgba(10,27,43,0.95)" : "rgba(255,255,255,0.95)",
-    textMuted:
-      th === "light" ? "rgba(10,27,43,0.70)" : "rgba(255,255,255,0.75)",
-    grid:
-      th === "light" ? "rgba(10,27,43,0.12)" : "rgba(255,255,255,0.12)",
-    axis:
-      th === "light" ? "rgba(10,27,43,0.25)" : "rgba(255,255,255,0.25)",
+    textStrong: th === "light" ? "rgba(10,27,43,0.95)" : "rgba(255,255,255,0.95)",
+    textMuted: th === "light" ? "rgba(10,27,43,0.72)" : "rgba(255,255,255,0.72)",
+    grid: th === "light" ? "rgba(10,27,43,0.12)" : "rgba(255,255,255,0.12)",
+    axis: th === "light" ? "rgba(10,27,43,0.30)" : "rgba(255,255,255,0.30)",
+    tooltipBg: th === "light" ? "rgba(255,255,255,0.96)" : "rgba(7,16,26,0.96)",
+    tooltipBorder: th === "light" ? "rgba(0,150,210,0.45)" : "rgba(0,191,255,0.45)",
     colors: [
-      "rgba(0,191,255,0.95)",
-      "rgba(18,209,142,0.95)",
-      "rgba(255,204,0,0.95)",
-      "rgba(255,90,160,0.95)"
+      "rgba(0,191,255,1)",
+      "rgba(18,209,142,1)",
+      "rgba(255,204,0,1)"
     ],
-    fills: [
-      "rgba(0,191,255,0.12)",
-      "rgba(18,209,142,0.12)",
-      "rgba(255,204,0,0.12)",
-      "rgba(255,90,160,0.12)"
+    glow: [
+      "rgba(0,191,255,0.25)",
+      "rgba(18,209,142,0.25)",
+      "rgba(255,204,0,0.25)"
     ]
   };
 }
 
 /* =========================
-   AFSNIT 05 – Graf fallback: søjler
-   ========================= */
-function renderBarChart({ ctx, canvas, list, eurDkk, mode }) {
-  const w = canvas.width;
-  const h = canvas.height;
-  const t = getChartTheme();
-
-  ctx.clearRect(0, 0, w, h);
-
-  const labels = list.map((x) => String(x?.name || "Ukendt"));
-
-  const values = list.map((x) => {
-    const n = calcCurrentFundNumbers(x, eurDkk);
-
-    if (mode === "price") return Number.isFinite(n.priceDKK) ? n.priceDKK : 0;
-    return Number.isFinite(n.gain) ? n.gain : 0;
-  });
-
-  const padL = 70;
-  const padR = 28;
-  const padT = 38;
-  const padB = 78;
-
-  const innerW = w - padL - padR;
-  const innerH = h - padT - padB;
-
-  const minV = Math.min(...values, 0);
-  const maxV = Math.max(...values, 0);
-  const range = maxV - minV || 1;
-
-  const yOf = (v) => padT + (1 - (v - minV) / range) * innerH;
-
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = t.axis;
-  ctx.beginPath();
-  ctx.moveTo(padL, padT);
-  ctx.lineTo(padL, padT + innerH);
-  ctx.lineTo(padL + innerW, padT + innerH);
-  ctx.stroke();
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = t.textStrong;
-  ctx.font = "700 15px system-ui";
-  ctx.fillText(
-    mode === "price"
-      ? "Nuværende kurs i DKK pr. fond"
-      : "Gevinst/tab i DKK pr. fond",
-    padL,
-    22
-  );
-
-  const n = values.length;
-  const gap = 18;
-  const barW = Math.max(18, (innerW - gap * (n - 1)) / n);
-
-  for (let i = 0; i < n; i++) {
-    const v = values[i];
-    const x = padL + i * (barW + gap);
-    const y = yOf(v);
-    const y0 = yOf(0);
-
-    const top = Math.min(y, y0);
-    const height = Math.max(2, Math.abs(y0 - y));
-
-    ctx.fillStyle =
-      mode === "price"
-        ? t.colors[0]
-        : v >= 0
-          ? t.colors[1]
-          : "rgba(255,90,95,0.90)";
-
-    ctx.fillRect(x, top, barW, height);
-
-    ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.font = "700 12px system-ui";
-    ctx.fillText(`${fmtDKK(v)} DKK`, x + barW / 2, top + 17);
-
-    ctx.fillStyle = t.textMuted;
-    ctx.font = "13px system-ui";
-
-    const raw = labels[i].replace(/^Nordea\s+/i, "").trim();
-    const words = raw.split(/\s+/);
-
-    let line1 = "";
-    let line2 = "";
-
-    for (const word of words) {
-      if ((line1 + " " + word).trim().length <= 18 && line2 === "") {
-        line1 = (line1 + " " + word).trim();
-      } else {
-        line2 = (line2 + " " + word).trim();
-      }
-    }
-
-    if (line2.length > 20) line2 = line2.slice(0, 19) + "…";
-
-    const baseY = padT + innerH + 28;
-
-    ctx.fillText(line1, x + barW / 2, baseY);
-    if (line2) ctx.fillText(line2, x + barW / 2, baseY + 17);
-  }
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = t.textMuted;
-  ctx.font = "12px system-ui";
-  ctx.fillText(
-    "Bemærk: Historik mangler eller har kun ét punkt. Viser derfor nuværende data.",
-    padL,
-    h - 14
-  );
-}
-
-/* =========================
-   AFSNIT 06 – Graf: historisk linjegraf
+   AFSNIT 05 – Historiske serier
    ========================= */
 function buildHistoricalSeries(list, eurDkk, mode) {
   const dates = getAllHistoryDates(list);
@@ -391,41 +251,28 @@ function buildHistoricalSeries(list, eurDkk, mode) {
 
     const values = dates.map((date) => {
       const histPrice = findHistoryPrice(item, date);
-
       if (histPrice === null) return null;
 
       const histPriceDKK = toDKK(histPrice, currency, eurDkk);
 
-      if (mode === "price") {
-        return Number.isFinite(histPriceDKK) ? histPriceDKK : null;
-      }
+      if (mode === "price") return Number.isFinite(histPriceDKK) ? histPriceDKK : null;
+      if (mode === "value") return Number.isFinite(histPriceDKK) && Number.isFinite(qty) ? histPriceDKK * qty : null;
 
-      if (mode === "value") {
-        return Number.isFinite(histPriceDKK) && Number.isFinite(qty)
-          ? histPriceDKK * qty
-          : null;
-      }
-
-      return Number.isFinite(histPriceDKK) &&
-        Number.isFinite(buyDKK) &&
-        Number.isFinite(qty)
+      return Number.isFinite(histPriceDKK) && Number.isFinite(buyDKK) && Number.isFinite(qty)
         ? qty * (histPriceDKK - buyDKK)
         : null;
     });
 
-    return {
-      name,
-      values
-    };
+    return { name, values };
   });
 
-  return {
-    dates,
-    series
-  };
+  return { dates, series };
 }
 
-function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
+/* =========================
+   AFSNIT 06 – Fancy linjegraf
+   ========================= */
+function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }) {
   const w = canvas.width;
   const h = canvas.height;
   const t = getChartTheme();
@@ -435,14 +282,17 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
   const { dates, series } = buildHistoricalSeries(list, eurDkk, mode);
   const flat = series.flatMap((s) => s.values).filter((v) => Number.isFinite(v));
 
- if (dates.length < 1) {
-  return;
+  if (!dates.length || !flat.length) {
+    ctx.fillStyle = t.textStrong;
+    ctx.font = "16px system-ui";
+    ctx.fillText("Ingen historik at vise endnu.", 30, 45);
+    return;
   }
 
-  const padL = 82;
-  const padR = 32;
-  const padT = 46;
-  const padB = 78;
+  const padL = 88;
+  const padR = 42;
+  const padT = 54;
+  const padB = 88;
 
   const innerW = w - padL - padR;
   const innerH = h - padT - padB;
@@ -455,39 +305,43 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
     maxV = Math.max(maxV, 0);
   }
 
-  const margin = (maxV - minV || 1) * 0.08;
-  minV -= margin;
-  maxV += margin;
+  if (minV === maxV) {
+    const spread = Math.max(Math.abs(maxV) * 0.08, 1000);
+    minV -= spread;
+    maxV += spread;
+  } else {
+    const spread = (maxV - minV) * 0.12;
+    minV -= spread;
+    maxV += spread;
+  }
 
   const range = maxV - minV || 1;
 
-  const xOf = (i) =>
-    dates.length === 1
-      ? padL + innerW / 2
-      : padL + (i / (dates.length - 1)) * innerW;
+  const xOf = (i) => {
+    if (dates.length === 1) return padL + innerW / 2;
+    return padL + (i / (dates.length - 1)) * innerW;
+  };
 
   const yOf = (v) => padT + (1 - (v - minV) / range) * innerH;
 
   const title =
     mode === "price"
-      ? "Historisk kursudvikling i DKK"
+      ? "Fancy graf: Historisk kursudvikling"
       : mode === "value"
-        ? "Historisk porteføljeværdi pr. fond"
-        : "Historisk gevinst/tab pr. fond";
+        ? "Fancy graf: Porteføljeværdi pr. fond"
+        : "Fancy graf: Gevinst/tab pr. fond";
 
   ctx.fillStyle = t.textStrong;
   ctx.font = "800 16px system-ui";
   ctx.textAlign = "left";
-  ctx.fillText(title, padL, 24);
+  ctx.fillText(title, padL, 26);
 
   ctx.strokeStyle = t.grid;
   ctx.lineWidth = 1;
 
-  const gridLines = 5;
-
-  for (let i = 0; i <= gridLines; i++) {
-    const y = padT + (i / gridLines) * innerH;
-    const value = maxV - (i / gridLines) * range;
+  for (let i = 0; i <= 5; i++) {
+    const y = padT + (i / 5) * innerH;
+    const value = maxV - (i / 5) * range;
 
     ctx.beginPath();
     ctx.moveTo(padL, y);
@@ -507,22 +361,21 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
   ctx.lineTo(padL + innerW, padT + innerH);
   ctx.stroke();
 
-  if (mode === "gain" && minV < 0 && maxV > 0) {
-    const y0 = yOf(0);
+  let hoverIndex = null;
 
-    ctx.strokeStyle = t.axis;
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(padL, y0);
-    ctx.lineTo(padL + innerW, y0);
-    ctx.stroke();
-    ctx.setLineDash([]);
+  if (hoverX !== null && dates.length > 0) {
+    const clampedX = Math.max(padL, Math.min(padL + innerW, hoverX));
+    const ratio = dates.length === 1 ? 0 : (clampedX - padL) / innerW;
+    hoverIndex = Math.round(ratio * (dates.length - 1));
   }
 
   for (let sIndex = 0; sIndex < series.length; sIndex++) {
     const set = series[sIndex];
     const color = t.colors[sIndex % t.colors.length];
 
+    ctx.save();
+    ctx.shadowColor = t.glow[sIndex % t.glow.length];
+    ctx.shadowBlur = 14;
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -531,7 +384,6 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
 
     for (let i = 0; i < set.values.length; i++) {
       const v = set.values[i];
-
       if (!Number.isFinite(v)) continue;
 
       const x = xOf(i);
@@ -546,46 +398,79 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
     }
 
     ctx.stroke();
-
-    ctx.fillStyle = color;
+    ctx.restore();
 
     for (let i = 0; i < set.values.length; i++) {
       const v = set.values[i];
-
       if (!Number.isFinite(v)) continue;
 
       const x = xOf(i);
       const y = yOf(v);
 
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, y, hoverIndex === i ? 6 : 4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  const firstDate = dates[0] || "";
-  const lastDate = dates[dates.length - 1] || "";
+  if (hoverIndex !== null) {
+    const x = xOf(hoverIndex);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x, padT);
+    ctx.lineTo(x, padT + innerH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const boxW = 245;
+    const boxH = 28 + series.length * 22;
+    const boxX = x + boxW + 18 > w ? x - boxW - 18 : x + 18;
+    const boxY = padT + 10;
+
+    ctx.fillStyle = t.tooltipBg;
+    ctx.strokeStyle = t.tooltipBorder;
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = t.textStrong;
+    ctx.font = "700 13px system-ui";
+    ctx.textAlign = "left";
+    ctx.fillText(dates[hoverIndex] || "—", boxX + 12, boxY + 20);
+
+    for (let i = 0; i < series.length; i++) {
+      const val = series[i].values[hoverIndex];
+      const color = t.colors[i % t.colors.length];
+
+      ctx.fillStyle = color;
+      ctx.fillRect(boxX + 12, boxY + 36 + i * 22, 10, 10);
+
+      ctx.fillStyle = t.textStrong;
+      ctx.font = "12px system-ui";
+      ctx.fillText(`${shortName(series[i].name)}: ${fmtDKK(val)} DKK`, boxX + 30, boxY + 46 + i * 22);
+    }
+  }
 
   ctx.fillStyle = t.textMuted;
   ctx.font = "12px system-ui";
   ctx.textAlign = "left";
-  ctx.fillText(firstDate, padL, padT + innerH + 26);
+  ctx.fillText(dates[0] || "", padL, padT + innerH + 28);
 
   ctx.textAlign = "right";
-  ctx.fillText(lastDate, padL + innerW, padT + innerH + 26);
+  ctx.fillText(dates[dates.length - 1] || "", padL + innerW, padT + innerH + 28);
 
-  const legendY = h - 22;
   let legendX = padL;
+  const legendY = h - 24;
 
   for (let i = 0; i < series.length; i++) {
-    const name = series[i].name
-      .replace(/^Nordea\s+/i, "")
-      .replace("Invest ", "")
-      .replace(" Enhanced KL 1", "")
-      .replace(" Fund BQ", "")
-      .trim();
-
     const color = t.colors[i % t.colors.length];
+    const name = shortName(series[i].name);
 
     ctx.fillStyle = color;
     ctx.fillRect(legendX, legendY - 10, 12, 12);
@@ -595,7 +480,7 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
     ctx.textAlign = "left";
     ctx.fillText(name, legendX + 18, legendY);
 
-    legendX += Math.min(230, 42 + name.length * 7);
+    legendX += Math.min(230, 48 + name.length * 7);
   }
 }
 
@@ -609,25 +494,27 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
   if (!ctx) return;
 
   const list = Array.isArray(holdings?.items) ? holdings.items : [];
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const t = getChartTheme();
-
-  if (!list.length) {
-    ctx.font = "16px system-ui";
-    ctx.fillStyle = t.textStrong;
-    ctx.fillText("Ingen data at vise.", 20, 40);
-    return;
-  }
-
   const selectedMode = String(mode || "gain").toLowerCase();
 
-  renderLineChart({
-    ctx,
-    canvas,
-    list,
-    eurDkk,
-    mode: selectedMode
-  });
+  function draw(hoverX = null) {
+    renderFancyLineChart({
+      ctx,
+      canvas,
+      list,
+      eurDkk,
+      mode: selectedMode,
+      hoverX
+    });
+  }
+
+  canvas.onmousemove = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const x = (event.clientX - rect.left) * scaleX;
+    draw(x);
+  };
+
+  canvas.onmouseleave = () => draw(null);
+
+  draw(null);
 }
