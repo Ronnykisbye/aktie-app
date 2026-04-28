@@ -1,5 +1,34 @@
 {
-  "updatedAt": null,
-  "source": "reset",
-  "items": []
+  "updatedAt": "2026-04-28T10:02:01.891Z",
+  "source": "github-action",
+  "items": [
+    {
+      "name": "Nordea Invest Europe Enhanced KL 1",
+      "isin": "DK0060949964",
+      "price": 141.88,
+      "currency": "DKK",
+      "updatedAt": "2026-04-28T10:02:01.625Z",
+      "source": "ft-markets",
+      "history": [
+        {
+          "date": "2026-04-28",
+          "price": 141.88
+        }
+      ]
+    },
+    {
+      "name": "Nordea Invest Global Enhanced KL 1",
+      "isin": "DK0060949881",
+      "price": 213.49,
+      "currency": "DKK",
+      "updatedAt": "2026-04-28T10:02:01.891Z",
+      "source": "ft-markets",
+      "history": [
+        {
+          "date": "2026-04-28",
+          "price": 213.49
+        }
+      ]
+    }
+  ]
 }
