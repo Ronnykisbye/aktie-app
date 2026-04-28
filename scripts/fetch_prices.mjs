@@ -1,10 +1,6 @@
 /* =========================================================
    scripts/fetch_prices.mjs
-   STABIL MANUEL VERSION MED ISIN
-   - Ingen scraping
-   - Ingen forkerte 0-kurser
-   - Matcher på ISIN
-   - Bevarer historik
+   STABIL VERSION MED INTRADAY HISTORIK
    ========================================================= */
 
 import fs from "fs/promises";
@@ -43,7 +39,10 @@ const FUNDS = [
   }
 ];
 
-function todayDK() {
+/* =========================
+   AFSNIT 01 – Tid (DK med klokkeslæt)
+   ========================= */
+function nowDK() {
   const dk = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Copenhagen" })
   );
@@ -52,24 +51,28 @@ function todayDK() {
   const m = String(dk.getMonth() + 1).padStart(2, "0");
   const d = String(dk.getDate()).padStart(2, "0");
 
-  return `${y}-${m}-${d}`;
+  const h = String(dk.getHours()).padStart(2, "0");
+  const min = String(dk.getMinutes()).padStart(2, "0");
+
+  return `${y}-${m}-${d} ${h}:${min}`;
 }
 
 function nowIso() {
   return new Date().toISOString();
 }
 
+/* =========================
+   AFSNIT 02 – Helpers
+   ========================= */
 function toNumber(value) {
   if (value === null || value === undefined) return null;
-
   const n = Number(String(value).trim().replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 
 async function readJson(filePath, fallback) {
   try {
-    const txt = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(txt);
+    return JSON.parse(await fs.readFile(filePath, "utf-8"));
   } catch {
     return fallback;
   }
@@ -80,33 +83,37 @@ async function writeJson(filePath, data) {
   await fs.writeFile(filePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
 }
 
+/* =========================
+   AFSNIT 03 – Validering
+   ========================= */
 function isValidPrice(fund, price) {
   const n = toNumber(price);
-
   if (!n) return false;
   if (n < fund.min) return false;
   if (n > fund.max) return false;
-
   return true;
 }
 
-function upsertToday(history, date, price) {
+/* =========================
+   AFSNIT 04 – HISTORIK (INTRADAY)
+   ========================= */
+function addHistoryPoint(history, timestamp, price) {
   const clean = Array.isArray(history)
     ? history.filter((p) => p?.date && Number.isFinite(Number(p?.price)))
     : [];
 
-  const withoutToday = clean.filter((p) => p.date !== date);
-
-  withoutToday.push({
-    date,
+  clean.push({
+    date: timestamp,
     price
   });
 
-  return withoutToday
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-30);
+  // behold sidste 50 punkter
+  return clean.slice(-50);
 }
 
+/* =========================
+   AFSNIT 05 – MAIN
+   ========================= */
 async function main() {
   const manual = await readJson(MANUAL_PATH, { items: [] });
   const previous = await readJson(PRICES_PATH, { items: [] });
@@ -123,7 +130,7 @@ async function main() {
       .map((x) => [String(x.isin).trim(), x])
   );
 
-  const date = todayDK();
+  const timestamp = nowDK();
   const updatedAt = nowIso();
 
   const results = [];
@@ -135,8 +142,8 @@ async function main() {
     const manualPrice = toNumber(manualItem?.price);
     const previousPrice = toNumber(previousItem?.price);
 
-    let finalPrice = null;
-    let source = "";
+    let finalPrice;
+    let source;
 
     if (isValidPrice(fund, manualPrice)) {
       finalPrice = manualPrice;
@@ -149,7 +156,11 @@ async function main() {
       source = "fallback-safe";
     }
 
-    const history = upsertToday(previousItem?.history, date, finalPrice);
+    const history = addHistoryPoint(
+      previousItem?.history,
+      timestamp,
+      finalPrice
+    );
 
     results.push({
       name: fund.name,
@@ -158,31 +169,22 @@ async function main() {
       price: finalPrice,
       updatedAt,
       source,
-      debug: {
-        manualPrice,
-        previousPrice,
-        fallbackPrice: fund.fallbackPrice,
-        acceptedRange: `${fund.min}-${fund.max}`
-      },
       history
     });
   }
 
   const out = {
     updatedAt,
-    source: "manual-isin-safe",
+    source: "manual-intraday",
     items: results
   };
 
   await writeJson(PRICES_PATH, out);
 
-  console.log("✅ Manual ISIN update OK");
-  for (const item of results) {
-    console.log("-", item.name, item.price, item.currency, item.source);
-  }
+  console.log("✅ Intraday historik OK");
 }
 
 main().catch((error) => {
-  console.error("❌ fetch_prices.mjs failed:", error);
+  console.error("❌ fejl:", error);
   process.exit(1);
 });
