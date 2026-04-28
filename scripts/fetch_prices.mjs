@@ -1,63 +1,34 @@
 /* =========================================================
    scripts/fetch_prices.mjs
-   REN HISTORIK VERSION
-   - Starter historik FRA NU (ingen gamle "previous" data)
+   STABIL VERSION (KVALITETSSIKRET)
+   - Ingen tilfældige tal
+   - Validering af kurs
+   - Fallback til sidste kendte værdi
    ========================================================= */
 
-/* =========================
-   AFSNIT 01 – Imports
-   ========================= */
 import fs from "fs/promises";
 import path from "path";
 
-/* =========================
-   AFSNIT 02 – Paths
-   ========================= */
 const ROOT = process.cwd();
 const DATA_DIR = path.join(ROOT, "data");
 const PRICES_PATH = path.join(DATA_DIR, "prices.json");
 
 /* =========================
-   AFSNIT 03 – RESET DATO
+   AFSNIT 01 – Helpers
    ========================= */
-const RESET_HISTORY_BEFORE = "2026-04-28";
-
-/* =========================
-   AFSNIT 04 – Helpers
-   ========================= */
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
 function nowIsoUtc() {
   return new Date().toISOString();
 }
 
-function dkDateYYYYMMDD(date = new Date()) {
-  const dk = new Date(
-    date.toLocaleString("en-US", { timeZone: "Europe/Copenhagen" })
-  );
-
-  return `${dk.getFullYear()}-${pad2(dk.getMonth() + 1)}-${pad2(dk.getDate())}`;
-}
-
 function asNumber(value) {
-  if (value === null || value === undefined) return null;
-
+  if (!value) return null;
   const n = Number(String(value).replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 
-/* =========================
-   AFSNIT 05 – HTTP
-   ========================= */
-const HEADERS = {
-  "User-Agent": "Mozilla/5.0",
-};
-
 async function fetchText(url) {
-  const res = await fetch(url, { headers: HEADERS });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP fejl");
   return res.text();
 }
 
@@ -65,55 +36,66 @@ function stripHtml(html) {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 }
 
-function findNumber(text) {
-  const m = text.match(/(\d{1,5}(?:[.,]\d{1,6}))/);
-  return m ? asNumber(m[1]) : null;
+/* =========================
+   AFSNIT 02 – VALIDERING
+   ========================= */
+function isValidPrice(name, price) {
+  if (!price) return false;
+
+  if (name.includes("Empower")) return price > 50 && price < 300;
+  if (name.includes("Europe Enhanced")) return price > 50 && price < 300;
+  if (name.includes("Global Enhanced")) return price > 100 && price < 400;
+
+  return false;
 }
 
 /* =========================
-   AFSNIT 06 – DATAKILDER
+   AFSNIT 03 – KILDER
    ========================= */
 async function fetchFromFT(url) {
   const html = await fetchText(url);
   const text = stripHtml(html);
-  const price = findNumber(text);
 
-  if (!price) throw new Error("FT fejl");
+  // Kig efter NAV / Price først
+  const match =
+    text.match(/NAV\s+(\d{1,5}(?:[.,]\d+)?)/i) ||
+    text.match(/Price\s+(\d{1,5}(?:[.,]\d+)?)/i);
 
-  return {
-    price,
-    source: "ft-markets",
-    marketTimeISO: nowIsoUtc()
-  };
+  if (!match) throw new Error("Ingen kurs fundet");
+
+  const price = asNumber(match[1]);
+
+  if (!price) throw new Error("Ugyldig kurs");
+
+  return price;
 }
 
 /* =========================
-   AFSNIT 07 – FONDE
+   AFSNIT 04 – FONDE
    ========================= */
 const FUNDS = [
   {
+    name: "Nordea Empower Europe Fund BQ",
+    isin: "LU3076185670",
+    currency: "EUR",
+    url: "https://markets.ft.com/data/funds/tearsheet/summary?s=LU3076185670"
+  },
+  {
     name: "Nordea Invest Europe Enhanced KL 1",
     isin: "DK0060949964",
+    currency: "DKK",
     url: "https://markets.ft.com/data/funds/tearsheet/summary?s=DK0060949964:DKK"
   },
   {
     name: "Nordea Invest Global Enhanced KL 1",
     isin: "DK0060949881",
+    currency: "DKK",
     url: "https://markets.ft.com/data/funds/tearsheet/summary?s=DK0060949881:DKK"
   }
 ];
 
 /* =========================
-   AFSNIT 08 – HISTORIK RESET
-   ========================= */
-function resetHistoryIfNeeded(history) {
-  if (!Array.isArray(history)) return [];
-
-  return history.filter(h => h.date >= RESET_HISTORY_BEFORE);
-}
-
-/* =========================
-   AFSNIT 09 – MAIN
+   AFSNIT 05 – MAIN
    ========================= */
 async function main() {
   const prev = await fs.readFile(PRICES_PATH, "utf-8")
@@ -122,29 +104,47 @@ async function main() {
 
   const prevMap = new Map(prev.items.map(i => [i.isin, i]));
 
-  const today = dkDateYYYYMMDD();
   const results = [];
 
   for (const fund of FUNDS) {
-    const data = await fetchFromFT(fund.url);
+    let price = null;
+    let source = "unknown";
 
-    const prevItem = prevMap.get(fund.isin);
+    try {
+      const fetched = await fetchFromFT(fund.url);
 
-    const history = resetHistoryIfNeeded(prevItem?.history);
+      if (isValidPrice(fund.name, fetched)) {
+        price = fetched;
+        source = "ft-valid";
+      } else {
+        throw new Error("Pris udenfor range");
+      }
 
-    history.push({
-      date: today,
-      price: data.price
-    });
+    } catch (e) {
+      const fallback = prevMap.get(fund.isin);
+
+      if (fallback?.price) {
+        price = fallback.price;
+        source = "fallback";
+      } else {
+        price = null;
+        source = "failed";
+      }
+    }
 
     results.push({
       name: fund.name,
       isin: fund.isin,
-      price: data.price,
-      currency: "DKK",
-      updatedAt: data.marketTimeISO,
-      source: data.source,
-      history
+      currency: fund.currency,
+      price,
+      updatedAt: nowIsoUtc(),
+      source,
+      history: [
+        {
+          date: new Date().toISOString().slice(0, 10),
+          price
+        }
+      ]
     });
   }
 
@@ -156,7 +156,7 @@ async function main() {
 
   await fs.writeFile(PRICES_PATH, JSON.stringify(out, null, 2));
 
-  console.log("✅ Historik nulstillet og opdateret");
+  console.log("✅ Stabil version kørt");
 }
 
 main();
