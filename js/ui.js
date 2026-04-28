@@ -435,9 +435,8 @@ function renderLineChart({ ctx, canvas, list, eurDkk, mode }) {
   const { dates, series } = buildHistoricalSeries(list, eurDkk, mode);
   const flat = series.flatMap((s) => s.values).filter((v) => Number.isFinite(v));
 
-  if (dates.length < 2 || flat.length < 2) {
-    renderBarChart({ ctx, canvas, list, eurDkk, mode });
-    return;
+ if (dates.length < 1) {
+  return;
   }
 
   const padL = 82;
