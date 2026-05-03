@@ -1,14 +1,14 @@
 {
-  "updatedAt": "2026-05-02T19:55:41.283Z",
+  "updatedAt": "2026-05-03T19:55:52.771Z",
   "source": "manual-intraday",
-  "runId": 1777751741283,
+  "runId": 1777838152771,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
       "price": 116.01,
-      "updatedAt": "2026-05-02T19:55:41.283Z",
+      "updatedAt": "2026-05-03T19:55:52.771Z",
       "source": "manual",
       "history": [
         {
@@ -49,6 +49,10 @@
         },
         {
           "date": "2026-05-02T19:55:41.283Z",
+          "price": 116.01
+        },
+        {
+          "date": "2026-05-03T19:55:52.771Z",
           "price": 116.01
         }
       ]
@@ -58,7 +62,7 @@
       "isin": "DK0060949964",
       "currency": "DKK",
       "price": 141.88,
-      "updatedAt": "2026-05-02T19:55:41.283Z",
+      "updatedAt": "2026-05-03T19:55:52.771Z",
       "source": "manual",
       "history": [
         {
@@ -99,6 +103,10 @@
         },
         {
           "date": "2026-05-02T19:55:41.283Z",
+          "price": 141.88
+        },
+        {
+          "date": "2026-05-03T19:55:52.771Z",
           "price": 141.88
         }
       ]
@@ -108,7 +116,7 @@
       "isin": "DK0060949881",
       "currency": "DKK",
       "price": 213.49,
-      "updatedAt": "2026-05-02T19:55:41.283Z",
+      "updatedAt": "2026-05-03T19:55:52.771Z",
       "source": "manual",
       "history": [
         {
@@ -149,6 +157,10 @@
         },
         {
           "date": "2026-05-02T19:55:41.283Z",
+          "price": 213.49
+        },
+        {
+          "date": "2026-05-03T19:55:52.771Z",
           "price": 213.49
         }
       ]
