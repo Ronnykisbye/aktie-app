@@ -5,7 +5,8 @@ name: Update prices.json (daily)
 
 on:
   schedule:
-    - cron: "0 19 * * *"
+    # Hverdage kl. 19:30 UTC (21:30 dansk sommertid)
+    - cron: "30 19 * * 1-5"
   workflow_dispatch: {}
 
 # =========================================================
