@@ -23,6 +23,12 @@ function fmtTime(d) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}.${pad(d.getMinutes())}`;
 }
 
+function fmtChartDate(value) {
+  const date = parseISO(value);
+  if (!date) return "—";
+  return date.toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 function fmtDKK(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
@@ -152,12 +158,19 @@ export function renderPortfolio({
   const lastTrading = parseISO(holdings?.meta?.lastTradingDayISO);
   const githubUpdated = parseISO(holdings?.meta?.githubUpdatedISO);
   const refreshedAt = parseISO(refreshedAtISO);
+  const dataSource = String(holdings?.meta?.pricesSource || "");
+  const sourceText = dataSource === "official-nordea"
+    ? "Officielle Nordea-kurser"
+    : dataSource.startsWith("partial-official")
+      ? "Nordea-kurser med sikker fallback"
+      : "Fallback-data";
 
   const parts = [];
   parts.push("OK — data vist.");
   parts.push(`Seneste handelsdag: ${fmtTime(lastTrading || githubUpdated)}`);
-  parts.push("Opdateret af GitHub");
-  parts.push(`Sidst opdateret: ${fmtTime(refreshedAt)}`);
+  parts.push(sourceText);
+  parts.push(`Datafil: ${fmtTime(githubUpdated)}`);
+  parts.push(`Vist: ${fmtTime(refreshedAt)}`);
 
   if (statusEl) statusEl.textContent = parts.join(" • ");
 
@@ -442,7 +455,7 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
     ctx.fillStyle = t.textStrong;
     ctx.font = "700 13px system-ui";
     ctx.textAlign = "left";
-    ctx.fillText(dates[hoverIndex] || "—", boxX + 12, boxY + 20);
+    ctx.fillText(fmtChartDate(dates[hoverIndex]), boxX + 12, boxY + 20);
 
     for (let i = 0; i < series.length; i++) {
       const val = series[i].values[hoverIndex];
@@ -460,10 +473,10 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
   ctx.fillStyle = t.textMuted;
   ctx.font = "12px system-ui";
   ctx.textAlign = "left";
-  ctx.fillText(dates[0] || "", padL, padT + innerH + 28);
+  ctx.fillText(fmtChartDate(dates[0]), padL, padT + innerH + 28);
 
   ctx.textAlign = "right";
-  ctx.fillText(dates[dates.length - 1] || "", padL + innerW, padT + innerH + 28);
+  ctx.fillText(fmtChartDate(dates[dates.length - 1]), padL + innerW, padT + innerH + 28);
 
   let legendX = padL;
   const legendY = h - 24;
