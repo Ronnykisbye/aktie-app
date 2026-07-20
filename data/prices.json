@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-07-20T18:30:31.527Z",
+  "updatedAt": "2026-07-20T20:47:58.504Z",
   "lastTradingDay": "2026-07-20",
   "source": "official-nordea",
-  "runId": 1784572235608,
+  "runId": 1784580480338,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -10,7 +10,7 @@
       "currency": "EUR",
       "price": 116.1336,
       "marketDate": "2026-07-20",
-      "updatedAt": "2026-07-20T18:30:31.527Z",
+      "updatedAt": "2026-07-20T20:47:58.504Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -26,7 +26,7 @@
       "currency": "DKK",
       "price": 150.4043,
       "marketDate": "2026-07-17",
-      "updatedAt": "2026-07-20T18:30:31.527Z",
+      "updatedAt": "2026-07-20T20:47:58.504Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -42,7 +42,7 @@
       "currency": "DKK",
       "price": 229.6808,
       "marketDate": "2026-07-17",
-      "updatedAt": "2026-07-20T18:30:31.527Z",
+      "updatedAt": "2026-07-20T20:47:58.504Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
