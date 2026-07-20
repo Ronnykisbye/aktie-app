@@ -3,18 +3,21 @@
     {
       "isin": "LU3076185670",
       "name": "Nordea Empower Europe Fund BQ",
+      "enabled": false,
       "price": 116.01,
       "currency": "EUR"
     },
     {
       "isin": "DK0060949964",
       "name": "Nordea Invest Europe Enhanced KL 1",
+      "enabled": false,
       "price": 141.88,
       "currency": "DKK"
     },
     {
       "isin": "DK0060949881",
       "name": "Nordea Invest Global Enhanced KL 1",
+      "enabled": false,
       "price": 213.49,
       "currency": "DKK"
     }
