@@ -146,6 +146,7 @@ export async function getLatestHoldingsPrices() {
 
   let pricesUpdatedAt = nowIso();
   let pricesSource = "csv-only";
+  let lastTradingDayISO = pricesUpdatedAt;
 
   const priceByExactName = new Map();
   const priceByKey = new Map();
@@ -155,6 +156,7 @@ export async function getLatestHoldingsPrices() {
 
     pricesUpdatedAt = prices?.updatedAt || pricesUpdatedAt;
     pricesSource = prices?.source || "prices.json";
+    lastTradingDayISO = prices?.lastTradingDay || pricesUpdatedAt;
 
     const items = Array.isArray(prices?.items) ? prices.items : [];
 
@@ -169,6 +171,8 @@ export async function getLatestHoldingsPrices() {
         price: Number(it?.price),
         updatedAt: it?.updatedAt || pricesUpdatedAt,
         source: it?.source || pricesSource,
+        marketDate: it?.marketDate || "",
+        warning: it?.warning || "",
         history: Array.isArray(it?.history) ? it.history : []
       };
 
@@ -196,6 +200,8 @@ export async function getLatestHoldingsPrices() {
       quantity: h.quantity,
       updatedAt: p?.updatedAt || pricesUpdatedAt,
       source: p?.source || pricesSource,
+      marketDate: p?.marketDate || "",
+      warning: p?.warning || "",
       history: Array.isArray(p?.history) ? p.history : []
     };
   });
@@ -205,7 +211,8 @@ export async function getLatestHoldingsPrices() {
     source: `merged(${pricesSource}+csv)`,
     meta: {
       githubUpdatedISO: pricesUpdatedAt,
-      lastTradingDayISO: pricesUpdatedAt
+      lastTradingDayISO,
+      pricesSource
     },
     items: mergedItems
   };
