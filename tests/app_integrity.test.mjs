@@ -7,7 +7,10 @@ import {
   getDividendByName,
   getTotalGrossDividendsDKK
 } from "../data/purchase-prices.js";
-import { calcCurrentFundNumbers } from "../js/ui.js";
+import {
+  buildPortfolioSeries,
+  calcCurrentFundNumbers
+} from "../js/ui.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => fs.readFile(path.join(ROOT, file), "utf8");
@@ -17,12 +20,43 @@ test("brugerfladen har alle elementer som JavaScript forventer", async () => {
   const requiredIds = [
     "refresh", "pdf", "graph", "themeToggle", "themeIcon", "status",
     "boxTotal", "totalValue", "boxGain", "totalGain", "totalBreakdown", "fundRows",
-    "chartSection", "chartClose", "chartType", "chartCanvas"
+    "chartSection", "chartClose", "chartType", "chartCanvas", "chartSummary"
   ];
 
   for (const id of requiredIds) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `Mangler #${id}`);
   }
+});
+
+test("porteføljegrafen bruger kun fælles handelsdage og viser procentændring", () => {
+  const result = buildPortfolioSeries([
+    {
+      name: "Fond A",
+      currency: "DKK",
+      quantity: 1,
+      history: [
+        { date: "2026-07-20T12:00:00.000Z", price: 100 },
+        { date: "2026-07-21T12:00:00.000Z", price: 110 },
+        { date: "2026-07-22T12:00:00.000Z", price: 120 }
+      ]
+    },
+    {
+      name: "Fond B",
+      currency: "DKK",
+      quantity: 2,
+      history: [
+        { date: "2026-07-20T12:00:00.000Z", price: 50 },
+        { date: "2026-07-21T12:00:00.000Z", price: 55 }
+      ]
+    }
+  ], 7.45, { percentage: true });
+
+  assert.deepEqual(result.dates, ["2026-07-20", "2026-07-21"]);
+  assert.deepEqual(result.totals, [200, 220]);
+  assert.equal(result.series[0].values[0], 0);
+  assert.ok(Math.abs(result.series[0].values[1] - 10) < 1e-10);
+  assert.equal(result.changeDKK, 20);
+  assert.equal(result.changePct, 10);
 });
 
 test("samlet afkast medregner de dokumenterede bruttoudbytter", () => {
