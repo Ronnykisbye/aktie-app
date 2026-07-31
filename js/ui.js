@@ -129,9 +129,88 @@ function getAllHistoryDates(list) {
 
 function findHistoryPrice(item, date) {
   const history = Array.isArray(item?.history) ? item.history : [];
-  const hit = history.find((p) => p?.date === date);
+  const day = String(date || "").slice(0, 10);
+  const hit = history.find((p) => String(p?.date || "").slice(0, 10) === day);
   const price = Number(hit?.price);
   return Number.isFinite(price) ? price : null;
+}
+
+function getCommonHistoryDates(list) {
+  if (!list.length) return [];
+
+  const dateSets = list.map((item) =>
+    new Set(
+      (Array.isArray(item?.history) ? item.history : [])
+        .map((point) => String(point?.date || "").slice(0, 10))
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    )
+  );
+
+  return [...dateSets[0]]
+    .filter((date) => dateSets.every((set) => set.has(date)))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function linearTrend(values) {
+  const valid = values
+    .map((value, index) => ({ index, value }))
+    .filter((point) => Number.isFinite(point.value));
+
+  if (valid.length < 2) return values.slice();
+
+  const meanX = valid.reduce((sum, point) => sum + point.index, 0) / valid.length;
+  const meanY = valid.reduce((sum, point) => sum + point.value, 0) / valid.length;
+  const denominator = valid.reduce((sum, point) => sum + (point.index - meanX) ** 2, 0);
+  const slope = denominator
+    ? valid.reduce((sum, point) => sum + (point.index - meanX) * (point.value - meanY), 0) / denominator
+    : 0;
+  const intercept = meanY - slope * meanX;
+
+  return values.map((_, index) => intercept + slope * index);
+}
+
+export function buildPortfolioSeries(list, eurDkk, { percentage = true } = {}) {
+  const dates = getCommonHistoryDates(Array.isArray(list) ? list : []);
+  const totals = dates.map((date) =>
+    list.reduce((sum, item) => {
+      const price = findHistoryPrice(item, date);
+      const priceDKK = toDKK(price, item?.currency, eurDkk);
+      const quantity = Number(item?.quantity ?? 0);
+      return sum + priceDKK * quantity;
+    }, 0)
+  );
+
+  const startValue = totals[0];
+  const lastValue = totals.at(-1);
+  const values = percentage && Number.isFinite(startValue) && startValue !== 0
+    ? totals.map((total) => ((total / startValue) - 1) * 100)
+    : totals.slice();
+  const trendValues = linearTrend(values);
+  const changeDKK = Number.isFinite(startValue) && Number.isFinite(lastValue)
+    ? lastValue - startValue
+    : NaN;
+  const changePct = Number.isFinite(changeDKK) && startValue !== 0
+    ? (changeDKK / startValue) * 100
+    : NaN;
+  const trendChangePct = percentage && trendValues.length > 1
+    ? trendValues.at(-1) - trendValues[0]
+    : Number.isFinite(startValue) && startValue !== 0 && trendValues.length > 1
+      ? ((trendValues.at(-1) - trendValues[0]) / startValue) * 100
+      : NaN;
+
+  return {
+    dates,
+    totals,
+    startValue,
+    lastValue,
+    changeDKK,
+    changePct,
+    trendChangePct,
+    series: [
+      { name: "Samlet portefølje", values, colorIndex: 0 },
+      { name: "Lineær tendens", values: trendValues, colorIndex: 2, dashed: true, points: false }
+    ]
+  };
 }
 
 function shortName(name) {
@@ -267,6 +346,10 @@ function getChartTheme() {
    AFSNIT 05 – Historiske serier
    ========================= */
 function buildHistoricalSeries(list, eurDkk, mode) {
+  if (mode === "portfolio" || mode === "portfolio-value") {
+    return buildPortfolioSeries(list, eurDkk, { percentage: mode === "portfolio" });
+  }
+
   const dates = getAllHistoryDates(list);
 
   const series = list.map((item) => {
@@ -296,7 +379,7 @@ function buildHistoricalSeries(list, eurDkk, mode) {
         : null;
     });
 
-    return { name, values };
+    return { name, values, colorIndex: null };
   });
 
   return { dates, series };
@@ -333,7 +416,7 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
   let minV = Math.min(...flat);
   let maxV = Math.max(...flat);
 
-  if (mode === "gain") {
+  if (mode === "gain" || mode === "portfolio") {
     minV = Math.min(minV, 0);
     maxV = Math.max(maxV, 0);
   }
@@ -358,7 +441,11 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
   const yOf = (v) => padT + (1 - (v - minV) / range) * innerH;
 
   const title =
-    mode === "price"
+    mode === "portfolio"
+      ? "Samlet portefølje: procentvis udvikling"
+      : mode === "portfolio-value"
+        ? "Samlet porteføljeværdi"
+        : mode === "price"
       ? "Fancy graf: Historisk kursudvikling"
       : mode === "value"
         ? "Fancy graf: Porteføljeværdi pr. fond"
@@ -384,7 +471,10 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
     ctx.fillStyle = t.textMuted;
     ctx.font = "12px system-ui";
     ctx.textAlign = "right";
-    ctx.fillText(fmtShortDKK(value), padL - 10, y + 4);
+    const axisText = mode === "portfolio"
+      ? `${value >= 0 ? "+" : ""}${fmtPct(value)} %`
+      : fmtShortDKK(value);
+    ctx.fillText(axisText, padL - 10, y + 4);
   }
 
   ctx.strokeStyle = t.axis;
@@ -404,13 +494,15 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
 
   for (let sIndex = 0; sIndex < series.length; sIndex++) {
     const set = series[sIndex];
-    const color = t.colors[sIndex % t.colors.length];
+    const colorIndex = Number.isInteger(set.colorIndex) ? set.colorIndex : sIndex;
+    const color = t.colors[colorIndex % t.colors.length];
 
     ctx.save();
-    ctx.shadowColor = t.glow[sIndex % t.glow.length];
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = t.glow[colorIndex % t.glow.length];
+    ctx.shadowBlur = set.dashed ? 0 : 14;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = set.dashed ? 2 : 3;
+    ctx.setLineDash(set.dashed ? [8, 6] : []);
     ctx.beginPath();
 
     let started = false;
@@ -431,7 +523,10 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
     }
 
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
+
+    if (set.points === false) continue;
 
     for (let i = 0; i < set.values.length; i++) {
       const v = set.values[i];
@@ -479,14 +574,18 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
 
     for (let i = 0; i < series.length; i++) {
       const val = series[i].values[hoverIndex];
-      const color = t.colors[i % t.colors.length];
+      const colorIndex = Number.isInteger(series[i].colorIndex) ? series[i].colorIndex : i;
+      const color = t.colors[colorIndex % t.colors.length];
 
       ctx.fillStyle = color;
       ctx.fillRect(boxX + 12, boxY + 36 + i * 22, 10, 10);
 
       ctx.fillStyle = t.textStrong;
       ctx.font = "12px system-ui";
-      ctx.fillText(`${shortName(series[i].name)}: ${fmtDKK(val)} DKK`, boxX + 30, boxY + 46 + i * 22);
+      const tooltipValue = mode === "portfolio"
+        ? `${val >= 0 ? "+" : ""}${fmtPct(val)} %`
+        : `${fmtDKK(val)} DKK`;
+      ctx.fillText(`${shortName(series[i].name)}: ${tooltipValue}`, boxX + 30, boxY + 46 + i * 22);
     }
   }
 
@@ -502,7 +601,8 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
   const legendY = h - 24;
 
   for (let i = 0; i < series.length; i++) {
-    const color = t.colors[i % t.colors.length];
+    const colorIndex = Number.isInteger(series[i].colorIndex) ? series[i].colorIndex : i;
+    const color = t.colors[colorIndex % t.colors.length];
     const name = shortName(series[i].name);
 
     ctx.fillStyle = color;
@@ -520,7 +620,7 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
 /* =========================
    AFSNIT 07 – Public graf render
    ========================= */
-export function renderChart({ canvas, holdings, eurDkk, mode }) {
+export function renderChart({ canvas, holdings, eurDkk, mode, summaryEl }) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
@@ -528,6 +628,23 @@ export function renderChart({ canvas, holdings, eurDkk, mode }) {
 
   const list = Array.isArray(holdings?.items) ? holdings.items : [];
   const selectedMode = String(mode || "gain").toLowerCase();
+  const portfolio = selectedMode === "portfolio" || selectedMode === "portfolio-value"
+    ? buildPortfolioSeries(list, eurDkk, { percentage: selectedMode === "portfolio" })
+    : null;
+
+  if (summaryEl) {
+    if (portfolio?.dates.length) {
+      const signDKK = portfolio.changeDKK >= 0 ? "+" : "";
+      const signPct = portfolio.changePct >= 0 ? "+" : "";
+      const trendSign = portfolio.trendChangePct >= 0 ? "+" : "";
+      summaryEl.textContent =
+        `Fælles handelsdage: ${fmtChartDate(portfolio.dates[0])}–${fmtChartDate(portfolio.dates.at(-1))}` +
+        ` • Ændring: ${signDKK}${fmtDKK(portfolio.changeDKK)} DKK (${signPct}${fmtPct(portfolio.changePct)} %)` +
+        ` • Lineær tendens: ${trendSign}${fmtPct(portfolio.trendChangePct)} %`;
+    } else {
+      summaryEl.textContent = "Denne visning sammenligner fondenes verificerede historiske datapunkter.";
+    }
+  }
 
   function draw(hoverX = null) {
     renderFancyLineChart({
