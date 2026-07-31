@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="da" data-theme="dark" data-build="2026-07-31-total-return">
+<html lang="da" data-theme="dark" data-build="2026-07-31-informative-chart">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -80,13 +80,16 @@
       <label class="chartLabel">
         Vælg graf:
         <select id="chartType" class="select">
-          <option value="gain">Samlet afkast</option>
+          <option value="portfolio">Samlet portefølje (%)</option>
+          <option value="portfolio-value">Samlet porteføljeværdi</option>
+          <option value="gain">Samlet afkast pr. fond</option>
           <option value="price">Historisk kurs</option>
         </select>
       </label>
 
       <canvas id="chartCanvas" height="180"></canvas>
-      <div class="chartNote">Kurshistorikken gemmes automatisk pr. handelsdag fra Nordeas officielle fondsdata.</div>
+      <div id="chartSummary" class="chartSummary">—</div>
+      <div class="chartNote">Grafen bruger kun fælles, verificerede handelsdage. Kurshistorikken gemmes automatisk fra Nordeas officielle fondsdata.</div>
     </section>
   </div>
 
