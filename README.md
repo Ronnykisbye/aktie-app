@@ -9,7 +9,8 @@ Appen viser:
 - tydelig opdeling mellem kursgevinst og bruttoudbytte
 - samlet afkast i procent og DKK for hver fond
 - seneste officielle fondskurs og handelsdato
-- historisk kurs- og gevinstgraf
+- informativ porteføljegraf i procent og DKK med trendlinje
+- historisk kurs- og afkastgraf pr. fond
 - udskrivning eller lagring som PDF
 - lyst og mørkt tema
 
@@ -81,6 +82,16 @@ En manuel kurs uden `enabled: true` bliver bevidst ignoreret. Det forhindrer, at
 Den tidligere version gemte de samme manuelle kurser med nye tidsstempler. Det gav en flad graf, selv om markedet havde bevæget sig. Den kunstige, flade historik fjernes automatisk, når officielle data overtager.
 
 Historikken starter derfor fra den første verificerede officielle måling efter rettelsen. Derefter vokser den med ét punkt pr. reel handelsdag. Appen opfinder ikke manglende historiske kurser.
+
+Standardgrafen viser porteføljens samlede procentvise ændring fra det første fælles, verificerede datapunkt. Kun datoer, hvor alle tre fonde har en officiel kurs, indgår. Det forhindrer, at en enkelt fonds nyere kurs giver et misvisende slutpunkt.
+
+Under grafen vises:
+
+- første og seneste fælles handelsdato
+- ændringen i både DKK og procent
+- en lineær trend, som gør en svag overordnet retning synlig uden at ændre de faktiske datapunkter
+
+Dropdown-menuen kan skifte mellem samlet portefølje i procent, samlet porteføljeværdi, afkast pr. fond og historisk kurs pr. fond.
 
 ## Beregninger
 
@@ -194,6 +205,16 @@ Hvis `LatestNAV blev ikke fundet` står som advarsel, kan Nordea have ændret HT
 - Ved kildefejl bevares en kendt gyldig kurs i stedet for at gemme et tilfældigt eller tomt tal.
 
 ## Versionsnotat
+
+### 31. juli 2026 – mere informativ porteføljegraf
+
+- gjort samlet procentvis porteføljeudvikling til standardgraf
+- tilføjet samlet porteføljeværdi som alternativ visning
+- tilføjet periode, ændring i DKK og procent samt lineær trend
+- fjernet misvisende slutpunkter ved kun at bruge fælles handelsdage
+- bevaret de eksisterende grafer for afkast og kurs pr. fond
+- tilføjet automatisk test af grafens datagrundlag
+- opdateret service-worker-cache og denne README
 
 ### 31. juli 2026 – samlet afkast inklusive udbytter
 
