@@ -9,7 +9,7 @@
 
 import { getLatestHoldingsPrices, getEURDKK } from "./api.js";
 import { renderPortfolio, renderChart } from "./ui.js";
-import { getPurchaseTotalDKKByName } from "../data/purchase-prices.js"; // <-- hvis filen ligger i /js: brug "./purchase-prices.js"
+import { getDividendByName, getPurchaseTotalDKKByName } from "../data/purchase-prices.js";
 
 /* =========================
    AFSNIT 01 – DOM refs (MATCHER index.html)
@@ -28,6 +28,7 @@ const totalValueEl = document.getElementById("totalValue");
 
 const boxGainEl = document.getElementById("boxGain");
 const totalGainEl = document.getElementById("totalGain");
+const totalBreakdownEl = document.getElementById("totalBreakdown");
 
 const rowsEl = document.getElementById("fundRows");
 
@@ -90,6 +91,7 @@ function applyPurchaseTotals({ holdings, eurDkk }) {
     const qty = Number(it?.quantity ?? 0);
 
     const purchaseTotalDKK = getPurchaseTotalDKKByName(name);
+    const dividend = getDividendByName(name);
 
     // Kun hvis vi har et meningsfuldt TOTAL-beløb + qty
     if (!(purchaseTotalDKK > 0) || !(qty > 0)) return it;
@@ -106,8 +108,10 @@ function applyPurchaseTotals({ holdings, eurDkk }) {
 
     return {
       ...it,
-      buyPrice,                 // pr unit i samme valuta som 'currency'
-      _purchaseTotalDKK: purchaseTotalDKK  // debug (bruges ikke i UI)
+      buyPrice,
+      _purchaseTotalDKK: purchaseTotalDKK,
+      _dividendTotalDKK: dividend.grossTotalDKK,
+      _dividendPaymentDate: dividend.paymentDate
     };
   });
 
@@ -136,6 +140,7 @@ async function loadAndRender({ reason = "init" } = {}) {
       statusEl,
       totalValueEl,
       totalGainEl,
+      totalBreakdownEl,
       rowsEl,
       boxTotalEl,
       boxGainEl,
