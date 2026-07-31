@@ -81,7 +81,7 @@ function flash(el) {
 /* =========================
    AFSNIT 02 – Beregninger
    ========================= */
-function calcCurrentFundNumbers(item, eurDkk) {
+export function calcCurrentFundNumbers(item, eurDkk) {
   const currency = String(item?.currency || "DKK").toUpperCase();
   const qty = Number(item?.quantity ?? 0);
 
@@ -93,7 +93,9 @@ function calcCurrentFundNumbers(item, eurDkk) {
 
   const value = Number.isFinite(qty) && Number.isFinite(priceDKK) ? qty * priceDKK : NaN;
   const purchase = Number.isFinite(qty) && Number.isFinite(buyDKK) ? qty * buyDKK : NaN;
-  const gain = Number.isFinite(value) && Number.isFinite(purchase) ? value - purchase : NaN;
+  const priceGain = Number.isFinite(value) && Number.isFinite(purchase) ? value - purchase : NaN;
+  const dividend = Number(item?._dividendTotalDKK ?? 0);
+  const gain = Number.isFinite(priceGain) && Number.isFinite(dividend) ? priceGain + dividend : NaN;
   const pct = Number.isFinite(gain) && Number.isFinite(purchase) && purchase !== 0 ? (gain / purchase) * 100 : NaN;
 
   return {
@@ -105,6 +107,8 @@ function calcCurrentFundNumbers(item, eurDkk) {
     buyDKK,
     value,
     purchase,
+    priceGain,
+    dividend,
     gain,
     pct
   };
@@ -146,6 +150,7 @@ export function renderPortfolio({
   statusEl,
   totalValueEl,
   totalGainEl,
+  totalBreakdownEl,
   rowsEl,
   boxTotalEl,
   boxGainEl,
@@ -176,17 +181,25 @@ export function renderPortfolio({
 
   let totalValue = 0;
   let totalPurchase = 0;
+  let totalPriceGain = 0;
+  let totalDividend = 0;
 
   for (const it of list) {
     const n = calcCurrentFundNumbers(it, eurDkk);
     if (Number.isFinite(n.value)) totalValue += n.value;
     if (Number.isFinite(n.purchase)) totalPurchase += n.purchase;
+    if (Number.isFinite(n.priceGain)) totalPriceGain += n.priceGain;
+    if (Number.isFinite(n.dividend)) totalDividend += n.dividend;
   }
 
-  const totalGain = totalValue - totalPurchase;
+  const totalGain = totalPriceGain + totalDividend;
 
   if (totalValueEl) totalValueEl.textContent = `${fmtDKK(totalValue)} DKK`;
   if (totalGainEl) totalGainEl.textContent = `${fmtDKK(totalGain)} DKK`;
+  if (totalBreakdownEl) {
+    totalBreakdownEl.textContent =
+      `Kursgevinst: ${fmtDKK(totalPriceGain)} DKK • Bruttoudbytte: ${fmtDKK(totalDividend)} DKK`;
+  }
 
   flash(boxTotalEl);
   flash(boxGainEl);
@@ -261,6 +274,8 @@ function buildHistoricalSeries(list, eurDkk, mode) {
     const currency = String(item?.currency || "DKK").toUpperCase();
     const qty = Number(item?.quantity ?? 0);
     const buyDKK = toDKK(item?.buyPrice, currency, eurDkk);
+    const dividendTotalDKK = Number(item?._dividendTotalDKK ?? 0);
+    const dividendPaymentDate = String(item?._dividendPaymentDate || "");
 
     const values = dates.map((date) => {
       const histPrice = findHistoryPrice(item, date);
@@ -271,8 +286,13 @@ function buildHistoricalSeries(list, eurDkk, mode) {
       if (mode === "price") return Number.isFinite(histPriceDKK) ? histPriceDKK : null;
       if (mode === "value") return Number.isFinite(histPriceDKK) && Number.isFinite(qty) ? histPriceDKK * qty : null;
 
+      const paidDividend =
+        dividendPaymentDate && date.slice(0, 10) >= dividendPaymentDate
+          ? dividendTotalDKK
+          : 0;
+
       return Number.isFinite(histPriceDKK) && Number.isFinite(buyDKK) && Number.isFinite(qty)
-        ? qty * (histPriceDKK - buyDKK)
+        ? qty * (histPriceDKK - buyDKK) + paidDividend
         : null;
     });
 
@@ -342,7 +362,7 @@ function renderFancyLineChart({ ctx, canvas, list, eurDkk, mode, hoverX = null }
       ? "Fancy graf: Historisk kursudvikling"
       : mode === "value"
         ? "Fancy graf: Porteføljeværdi pr. fond"
-        : "Fancy graf: Gevinst/tab pr. fond";
+        : "Fancy graf: Samlet afkast pr. fond";
 
   ctx.fillStyle = t.textStrong;
   ctx.font = "800 16px system-ui";
