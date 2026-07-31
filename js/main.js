@@ -36,6 +36,7 @@ const chartSection = document.getElementById("chartSection");
 const chartClose = document.getElementById("chartClose");
 const chartType = document.getElementById("chartType");
 const chartCanvas = document.getElementById("chartCanvas");
+const chartSummary = document.getElementById("chartSummary");
 
 /* =========================
    AFSNIT 02 – Theme
@@ -155,7 +156,8 @@ async function loadAndRender({ reason = "init" } = {}) {
         canvas: chartCanvas,
         holdings: lastHoldings,
         eurDkk: lastEurDkk,
-        mode: chartType?.value || "gain"
+        mode: chartType?.value || "portfolio",
+        summaryEl: chartSummary
       });
     }
   } catch (err) {
@@ -171,11 +173,17 @@ function openChart() {
   if (!chartSection) return;
   chartSection.hidden = false;
 
-  if (chartType && !chartType.value) chartType.value = "gain";
+  if (chartType && !chartType.value) chartType.value = "portfolio";
   ensureCanvasSize();
 
   if (lastHoldings) {
-    renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType.value });
+    renderChart({
+      canvas: chartCanvas,
+      holdings: lastHoldings,
+      eurDkk: lastEurDkk,
+      mode: chartType.value,
+      summaryEl: chartSummary
+    });
   }
 }
 
@@ -195,7 +203,13 @@ btnTheme?.addEventListener("click", () => {
 
   if (chartSection && !chartSection.hidden && lastHoldings) {
     ensureCanvasSize();
-    renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType?.value || "gain" });
+    renderChart({
+      canvas: chartCanvas,
+      holdings: lastHoldings,
+      eurDkk: lastEurDkk,
+      mode: chartType?.value || "portfolio",
+      summaryEl: chartSummary
+    });
   }
 });
 
@@ -209,13 +223,25 @@ chartClose?.addEventListener("click", closeChart);
 chartType?.addEventListener("change", () => {
   if (!lastHoldings) return;
   ensureCanvasSize();
-  renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType.value });
+  renderChart({
+    canvas: chartCanvas,
+    holdings: lastHoldings,
+    eurDkk: lastEurDkk,
+    mode: chartType.value,
+    summaryEl: chartSummary
+  });
 });
 
 window.addEventListener("resize", () => {
   if (chartSection && !chartSection.hidden && lastHoldings) {
     ensureCanvasSize();
-    renderChart({ canvas: chartCanvas, holdings: lastHoldings, eurDkk: lastEurDkk, mode: chartType?.value || "gain" });
+    renderChart({
+      canvas: chartCanvas,
+      holdings: lastHoldings,
+      eurDkk: lastEurDkk,
+      mode: chartType?.value || "portfolio",
+      summaryEl: chartSummary
+    });
   }
 });
 
