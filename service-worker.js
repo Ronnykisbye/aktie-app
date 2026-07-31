@@ -6,7 +6,7 @@
    - Cache-name bump, så gamle caches ryger
    ========================================================= */
 
-const CACHE_NAME = "aktieapp-v2026-07-31-total-return";
+const CACHE_NAME = "aktieapp-v2026-07-31-informative-chart";
 
 const CORE_ASSETS = [
   "./",
