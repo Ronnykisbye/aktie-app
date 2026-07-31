@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  getDividendByName,
+  getTotalGrossDividendsDKK
+} from "../data/purchase-prices.js";
+import { calcCurrentFundNumbers } from "../js/ui.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => fs.readFile(path.join(ROOT, file), "utf8");
@@ -11,13 +16,32 @@ test("brugerfladen har alle elementer som JavaScript forventer", async () => {
   const html = await read("index.html");
   const requiredIds = [
     "refresh", "pdf", "graph", "themeToggle", "themeIcon", "status",
-    "boxTotal", "totalValue", "boxGain", "totalGain", "fundRows",
+    "boxTotal", "totalValue", "boxGain", "totalGain", "totalBreakdown", "fundRows",
     "chartSection", "chartClose", "chartType", "chartCanvas"
   ];
 
   for (const id of requiredIds) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `Mangler #${id}`);
   }
+});
+
+test("samlet afkast medregner de dokumenterede bruttoudbytter", () => {
+  assert.equal(getDividendByName("Nordea Invest Europe Enhanced KL 1").grossTotalDKK, 13686.40);
+  assert.equal(getDividendByName("Nordea Invest Global Enhanced KL 1").grossTotalDKK, 6615.60);
+  assert.equal(getTotalGrossDividendsDKK(), 20302);
+
+  const result = calcCurrentFundNumbers({
+    currency: "DKK",
+    quantity: 1,
+    price: 110,
+    buyPrice: 100,
+    _dividendTotalDKK: 5
+  }, 7.45);
+
+  assert.equal(result.priceGain, 10);
+  assert.equal(result.dividend, 5);
+  assert.equal(result.gain, 15);
+  assert.equal(result.pct, 15);
 });
 
 test("alle lokale filer som index.html henviser til findes", async () => {
