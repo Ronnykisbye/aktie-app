@@ -5,8 +5,9 @@ En enkel, mobilvenlig portefølje-app til at følge værdien og udviklingen i tr
 Appen viser:
 
 - samlet porteføljeværdi i danske kroner
-- samlet gevinst eller tab i DKK
-- udvikling i procent og DKK for hver fond
+- samlet afkast inklusive dokumenterede bruttoudbytter
+- tydelig opdeling mellem kursgevinst og bruttoudbytte
+- samlet afkast i procent og DKK for hver fond
 - seneste officielle fondskurs og handelsdato
 - historisk kurs- og gevinstgraf
 - udskrivning eller lagring som PDF
@@ -22,7 +23,7 @@ Appen viser:
 | Nordea Invest Europe Enhanced KL 1 | `DK0060949964` | DKK |
 | Nordea Invest Global Enhanced KL 1 | `DK0060949881` | DKK |
 
-Antal og oprindelige porteføljeoplysninger ligger i `fonde.csv`. De samlede investerede beløb, som gevinstberegningen bruger, ligger i `data/purchase-prices.js`.
+Antal og oprindelige porteføljeoplysninger ligger i `fonde.csv`. De samlede investerede beløb og registrerede bruttoudbytter ligger i `data/purchase-prices.js`.
 
 ## Sådan virker kursopdateringen
 
@@ -86,8 +87,24 @@ Historikken starter derfor fra den første verificerede officielle måling efter
 For hver fond beregnes:
 
 - `porteføljeværdi = antal × aktuel kurs i DKK`
-- `gevinst/tab = porteføljeværdi − investeret beløb`
-- `udvikling i % = gevinst/tab ÷ investeret beløb × 100`
+- `kursgevinst = porteføljeværdi − investeret beløb`
+- `samlet afkast = kursgevinst + registreret bruttoudbytte`
+- `afkast i % = samlet afkast ÷ investeret beløb × 100`
+
+### Registrerede udbytter
+
+Appen medregner følgende dokumenterede bruttoudbytter for regnskabsåret 2025, udbetalt den 6. februar 2026:
+
+| Fond | Udbytte pr. bevis | Antal | Bruttoudbytte |
+|---|---:|---:|---:|
+| Nordea Empower Europe Fund BQ | Ikke udbyttebetalende | 405 | 0,00 DKK |
+| Nordea Invest Europe Enhanced KL 1 | 5,20 DKK | 2.632 | 13.686,40 DKK |
+| Nordea Invest Global Enhanced KL 1 | 3,70 DKK | 1.788 | 6.615,60 DKK |
+| **I alt** |  |  | **20.302,00 DKK** |
+
+Kilder: [Nordea – Udbytter for 2025](https://www.nordeafunds.com/da/investorinformation/udbytter-for-2025) og [Nordea – Empower Europe Fund BQ](https://www.nordeafunds.com/da/fonde/empower-europe-fund-bq).
+
+Beløbene er bruttoudbytter før eventuel skat. Nye udbytter skal først medregnes, når de er officielt dokumenteret og tilføjet i `data/purchase-prices.js`.
 
 EUR omregnes i øjeblikket med den faste kurs `7,45 DKK pr. EUR` i `js/api.js`. Det giver stabile beregninger, men beløbet kan afvige lidt fra bankens aktuelle valutakurs.
 
@@ -177,6 +194,16 @@ Hvis `LatestNAV blev ikke fundet` står som advarsel, kan Nordea have ændret HT
 - Ved kildefejl bevares en kendt gyldig kurs i stedet for at gemme et tilfældigt eller tomt tal.
 
 ## Versionsnotat
+
+### 31. juli 2026 – samlet afkast inklusive udbytter
+
+- rettet den misvisende gevinstvisning, som kun omfattede kursændringer
+- medregnet 20.302,00 DKK i dokumenterede bruttoudbytter
+- tilføjet opdeling mellem kursgevinst og bruttoudbytte
+- opdateret fondsvisning og graf til samlet afkast
+- tilføjet automatisk test af udbytte- og afkastberegningen
+- opdateret service-worker-cache, så installerede versioner modtager rettelsen
+- opdateret denne README med beregning, kilder og vedligeholdelse
 
 ### 20. juli 2026 – officielle kurser og rigtig historik
 
