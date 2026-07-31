@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="da" data-theme="dark" data-build="2026-07-20-official-prices">
+<html lang="da" data-theme="dark" data-build="2026-07-31-total-return">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -49,8 +49,9 @@
       </div>
 
       <div class="statBox" id="boxGain">
-        <div class="statTitle gainTitle">Samlet gevinst/tab siden 10.09.2025</div>
+        <div class="statTitle gainTitle">Samlet afkast inkl. bruttoudbytte siden 10.09.2025</div>
         <div class="statValue gainValue" id="totalGain">—</div>
+        <div class="statDetail" id="totalBreakdown">—</div>
       </div>
     </section>
 
@@ -59,8 +60,8 @@
         <thead>
           <tr>
             <th>Navn</th>
-            <th>Udvikling (%)</th>
-            <th>Udvikling (DKK)</th>
+            <th>Afkast inkl. udbytte (%)</th>
+            <th>Afkast inkl. udbytte (DKK)</th>
             <th>Kurs</th>
             <th>Antal</th>
             <th>Kurs (DKK)</th>
@@ -79,7 +80,7 @@
       <label class="chartLabel">
         Vælg graf:
         <select id="chartType" class="select">
-          <option value="gain">Gevinst-udvikling</option>
+          <option value="gain">Samlet afkast</option>
           <option value="price">Historisk kurs</option>
         </select>
       </label>
