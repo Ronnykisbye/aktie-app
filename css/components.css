@@ -158,6 +158,14 @@ h1{
   color: var(--gainText);
 }
 
+.statDetail{
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* Flash når der er opdateret */
 .flash{
   animation: flashPulse .55s ease-out 1;
