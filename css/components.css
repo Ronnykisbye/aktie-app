@@ -254,3 +254,15 @@ h1{
   color: var(--muted);
   font-size: 12px;
 }
+
+.chartSummary{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cardBorder);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
