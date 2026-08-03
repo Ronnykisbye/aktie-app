@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-31T20:40:45.113Z",
-  "lastTradingDay": "2026-07-31",
-  "source": "official-nordea",
-  "runId": 1785530446658,
+  "updatedAt": "2026-08-03T20:43:25.189Z",
+  "lastTradingDay": "2026-08-03",
+  "source": "partial-official-2-of-3",
+  "runId": 1785789805805,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 117.6996,
-      "marketDate": "2026-07-31",
-      "updatedAt": "2026-07-31T20:40:45.113Z",
+      "price": 118.5312,
+      "marketDate": "2026-08-03",
+      "updatedAt": "2026-08-03T20:43:25.189Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -49,6 +49,10 @@
         {
           "date": "2026-07-31T12:00:00.000Z",
           "price": 117.6996
+        },
+        {
+          "date": "2026-08-03T12:00:00.000Z",
+          "price": 118.5312
         }
       ]
     },
@@ -58,9 +62,10 @@
       "currency": "DKK",
       "price": 152.1744,
       "marketDate": "2026-07-30",
-      "updatedAt": "2026-07-31T20:40:45.113Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-08-03T20:43:25.189Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 152019 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -104,9 +109,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 229.1276,
-      "marketDate": "2026-07-30",
-      "updatedAt": "2026-07-31T20:40:45.113Z",
+      "price": 230.4821,
+      "marketDate": "2026-07-31",
+      "updatedAt": "2026-08-03T20:43:25.189Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -149,6 +154,10 @@
         {
           "date": "2026-07-30T12:00:00.000Z",
           "price": 229.1276
+        },
+        {
+          "date": "2026-07-31T12:00:00.000Z",
+          "price": 230.4821
         }
       ]
     }
