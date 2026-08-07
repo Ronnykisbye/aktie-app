@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-07T00:46:49.184Z",
+  "updatedAt": "2026-08-07T20:04:53.073Z",
   "lastTradingDay": "2026-08-06",
   "source": "official-nordea",
-  "runId": 1786063609803,
+  "runId": 1786133096182,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -10,7 +10,7 @@
       "currency": "EUR",
       "price": 121.3707,
       "marketDate": "2026-08-06",
-      "updatedAt": "2026-08-07T00:46:49.184Z",
+      "updatedAt": "2026-08-07T20:04:53.073Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -72,9 +72,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 153.9192,
-      "marketDate": "2026-08-05",
-      "updatedAt": "2026-08-07T00:46:49.184Z",
+      "price": 154.2224,
+      "marketDate": "2026-08-06",
+      "updatedAt": "2026-08-07T20:04:53.073Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -125,6 +125,10 @@
         {
           "date": "2026-08-05T12:00:00.000Z",
           "price": 153.9192
+        },
+        {
+          "date": "2026-08-06T12:00:00.000Z",
+          "price": 154.2224
         }
       ]
     },
@@ -132,9 +136,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 236.0398,
-      "marketDate": "2026-08-05",
-      "updatedAt": "2026-08-07T00:46:49.184Z",
+      "price": 235.9917,
+      "marketDate": "2026-08-06",
+      "updatedAt": "2026-08-07T20:04:53.073Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -193,6 +197,10 @@
         {
           "date": "2026-08-05T12:00:00.000Z",
           "price": 236.0398
+        },
+        {
+          "date": "2026-08-06T12:00:00.000Z",
+          "price": 235.9917
         }
       ]
     }
