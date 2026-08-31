@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-08-29T02:21:58.673Z",
-  "lastTradingDay": "2026-08-28",
-  "source": "official-nordea",
-  "runId": 1787970119162,
+  "updatedAt": "2026-08-31T23:16:17.130Z",
+  "lastTradingDay": "2026-08-31",
+  "source": "partial-official-2-of-3",
+  "runId": 1788218177618,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 122.5194,
-      "marketDate": "2026-08-28",
-      "updatedAt": "2026-08-29T02:21:58.673Z",
+      "price": 121.6119,
+      "marketDate": "2026-08-31",
+      "updatedAt": "2026-08-31T23:16:17.130Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -105,6 +105,10 @@
         {
           "date": "2026-08-28T12:00:00.000Z",
           "price": 122.5194
+        },
+        {
+          "date": "2026-08-31T12:00:00.000Z",
+          "price": 121.6119
         }
       ]
     },
@@ -114,9 +118,10 @@
       "currency": "DKK",
       "price": 153.1571,
       "marketDate": "2026-08-27",
-      "updatedAt": "2026-08-29T02:21:58.673Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-08-31T23:16:17.130Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 154063 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -228,9 +233,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 234.4724,
-      "marketDate": "2026-08-27",
-      "updatedAt": "2026-08-29T02:21:58.673Z",
+      "price": 234.4462,
+      "marketDate": "2026-08-28",
+      "updatedAt": "2026-08-31T23:16:17.130Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -345,6 +350,10 @@
         {
           "date": "2026-08-27T12:00:00.000Z",
           "price": 234.4724
+        },
+        {
+          "date": "2026-08-28T12:00:00.000Z",
+          "price": 234.4462
         }
       ]
     }
