@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-10-06T00:54:03.220Z",
-  "lastTradingDay": "2026-10-05",
-  "source": "partial-official-2-of-3",
-  "runId": 1791248044240,
+  "updatedAt": "2026-10-06T23:10:53.057Z",
+  "lastTradingDay": "2026-10-06",
+  "source": "official-nordea",
+  "runId": 1791328254159,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 117.1441,
-      "marketDate": "2026-10-05",
-      "updatedAt": "2026-10-06T00:54:03.220Z",
+      "price": 117.7245,
+      "marketDate": "2026-10-06",
+      "updatedAt": "2026-10-06T23:10:53.057Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -181,6 +181,10 @@
         {
           "date": "2026-10-05T12:00:00.000Z",
           "price": 117.1441
+        },
+        {
+          "date": "2026-10-06T12:00:00.000Z",
+          "price": 117.7245
         }
       ]
     },
@@ -188,9 +192,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 148.5707,
-      "marketDate": "2026-10-02",
-      "updatedAt": "2026-10-06T00:54:03.220Z",
+      "price": 149.1374,
+      "marketDate": "2026-10-05",
+      "updatedAt": "2026-10-06T23:10:53.057Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -389,6 +393,10 @@
         {
           "date": "2026-10-02T12:00:00.000Z",
           "price": 148.5707
+        },
+        {
+          "date": "2026-10-05T12:00:00.000Z",
+          "price": 149.1374
         }
       ]
     },
@@ -396,12 +404,11 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 238.5062,
-      "marketDate": "2026-10-01",
-      "updatedAt": "2026-10-06T00:54:03.220Z",
-      "source": "previous-safe",
+      "price": 242.6996,
+      "marketDate": "2026-10-05",
+      "updatedAt": "2026-10-06T23:10:53.057Z",
+      "source": "official-nordea",
       "historyVersion": 2,
-      "warning": "Kurs 239741 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -610,6 +617,10 @@
         {
           "date": "2026-10-01T12:00:00.000Z",
           "price": 238.5062
+        },
+        {
+          "date": "2026-10-05T12:00:00.000Z",
+          "price": 242.6996
         }
       ]
     }
