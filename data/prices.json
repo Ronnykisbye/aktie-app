@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-10-09T23:23:42.236Z",
-  "lastTradingDay": "2026-10-09",
+  "updatedAt": "2026-10-13T01:32:26.202Z",
+  "lastTradingDay": "2026-10-12",
   "source": "partial-official-2-of-3",
-  "runId": 1791588223843,
+  "runId": 1791855146787,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 115.6867,
-      "marketDate": "2026-10-09",
-      "updatedAt": "2026-10-09T23:23:42.236Z",
+      "price": 116.4412,
+      "marketDate": "2026-10-12",
+      "updatedAt": "2026-10-13T01:32:26.202Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -197,6 +197,10 @@
         {
           "date": "2026-10-09T12:00:00.000Z",
           "price": 115.6867
+        },
+        {
+          "date": "2026-10-12T12:00:00.000Z",
+          "price": 116.4412
         }
       ]
     },
@@ -206,10 +210,10 @@
       "currency": "DKK",
       "price": 148.2414,
       "marketDate": "2026-10-07",
-      "updatedAt": "2026-10-09T23:23:42.236Z",
+      "updatedAt": "2026-10-13T01:32:26.202Z",
       "source": "previous-safe",
       "historyVersion": 2,
-      "warning": "Kurs 147223 ligger uden for sikkerhedsgrænsen",
+      "warning": "Kurs 148499 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -425,9 +429,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 241.7306,
-      "marketDate": "2026-10-08",
-      "updatedAt": "2026-10-09T23:23:42.236Z",
+      "price": 243.7512,
+      "marketDate": "2026-10-09",
+      "updatedAt": "2026-10-13T01:32:26.202Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -654,6 +658,10 @@
         {
           "date": "2026-10-08T12:00:00.000Z",
           "price": 241.7306
+        },
+        {
+          "date": "2026-10-09T12:00:00.000Z",
+          "price": 243.7512
         }
       ]
     }
