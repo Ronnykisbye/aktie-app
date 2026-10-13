@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-13T01:32:26.202Z",
+  "updatedAt": "2026-10-13T23:22:19.559Z",
   "lastTradingDay": "2026-10-12",
   "source": "partial-official-2-of-3",
-  "runId": 1791855146787,
+  "runId": 1791933741176,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -10,9 +10,10 @@
       "currency": "EUR",
       "price": 116.4412,
       "marketDate": "2026-10-12",
-      "updatedAt": "2026-10-13T01:32:26.202Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-10-13T23:22:19.559Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 115749 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-20T12:00:00.000Z",
@@ -208,12 +209,11 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 148.2414,
-      "marketDate": "2026-10-07",
-      "updatedAt": "2026-10-13T01:32:26.202Z",
-      "source": "previous-safe",
+      "price": 149.5351,
+      "marketDate": "2026-10-12",
+      "updatedAt": "2026-10-13T23:22:19.559Z",
+      "source": "official-nordea",
       "historyVersion": 2,
-      "warning": "Kurs 148499 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -422,6 +422,10 @@
         {
           "date": "2026-10-07T12:00:00.000Z",
           "price": 148.2414
+        },
+        {
+          "date": "2026-10-12T12:00:00.000Z",
+          "price": 149.5351
         }
       ]
     },
@@ -429,9 +433,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 243.7512,
-      "marketDate": "2026-10-09",
-      "updatedAt": "2026-10-13T01:32:26.202Z",
+      "price": 244.3074,
+      "marketDate": "2026-10-12",
+      "updatedAt": "2026-10-13T23:22:19.559Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -662,6 +666,10 @@
         {
           "date": "2026-10-09T12:00:00.000Z",
           "price": 243.7512
+        },
+        {
+          "date": "2026-10-12T12:00:00.000Z",
+          "price": 244.3074
         }
       ]
     }
