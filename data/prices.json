@@ -1,19 +1,18 @@
 {
-  "updatedAt": "2026-10-13T23:22:19.559Z",
-  "lastTradingDay": "2026-10-12",
+  "updatedAt": "2026-10-14T22:29:02.768Z",
+  "lastTradingDay": "2026-10-14",
   "source": "partial-official-2-of-3",
-  "runId": 1791933741176,
+  "runId": 1792016944305,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 116.4412,
-      "marketDate": "2026-10-12",
-      "updatedAt": "2026-10-13T23:22:19.559Z",
-      "source": "previous-safe",
+      "price": 116.0938,
+      "marketDate": "2026-10-14",
+      "updatedAt": "2026-10-14T22:29:02.768Z",
+      "source": "official-nordea",
       "historyVersion": 2,
-      "warning": "Kurs 115749 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-20T12:00:00.000Z",
@@ -202,6 +201,10 @@
         {
           "date": "2026-10-12T12:00:00.000Z",
           "price": 116.4412
+        },
+        {
+          "date": "2026-10-14T12:00:00.000Z",
+          "price": 116.0938
         }
       ]
     },
@@ -209,9 +212,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 149.5351,
-      "marketDate": "2026-10-12",
-      "updatedAt": "2026-10-13T23:22:19.559Z",
+      "price": 149.2248,
+      "marketDate": "2026-10-13",
+      "updatedAt": "2026-10-14T22:29:02.768Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -426,6 +429,10 @@
         {
           "date": "2026-10-12T12:00:00.000Z",
           "price": 149.5351
+        },
+        {
+          "date": "2026-10-13T12:00:00.000Z",
+          "price": 149.2248
         }
       ]
     },
@@ -435,9 +442,10 @@
       "currency": "DKK",
       "price": 244.3074,
       "marketDate": "2026-10-12",
-      "updatedAt": "2026-10-13T23:22:19.559Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-10-14T22:29:02.768Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 243825 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
