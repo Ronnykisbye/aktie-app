@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-14T22:29:02.768Z",
+  "updatedAt": "2026-10-15T22:33:45.479Z",
   "lastTradingDay": "2026-10-14",
-  "source": "partial-official-2-of-3",
-  "runId": 1792016944305,
+  "source": "partial-official-1-of-3",
+  "runId": 1792103626698,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -10,9 +10,10 @@
       "currency": "EUR",
       "price": 116.0938,
       "marketDate": "2026-10-14",
-      "updatedAt": "2026-10-14T22:29:02.768Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-10-15T22:33:45.479Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "LatestNAV blev ikke fundet på Nordea-siden",
       "history": [
         {
           "date": "2026-07-20T12:00:00.000Z",
@@ -212,9 +213,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 149.2248,
-      "marketDate": "2026-10-13",
-      "updatedAt": "2026-10-14T22:29:02.768Z",
+      "price": 149.8736,
+      "marketDate": "2026-10-14",
+      "updatedAt": "2026-10-15T22:33:45.479Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -433,6 +434,10 @@
         {
           "date": "2026-10-13T12:00:00.000Z",
           "price": 149.2248
+        },
+        {
+          "date": "2026-10-14T12:00:00.000Z",
+          "price": 149.8736
         }
       ]
     },
@@ -442,10 +447,10 @@
       "currency": "DKK",
       "price": 244.3074,
       "marketDate": "2026-10-12",
-      "updatedAt": "2026-10-14T22:29:02.768Z",
+      "updatedAt": "2026-10-15T22:33:45.479Z",
       "source": "previous-safe",
       "historyVersion": 2,
-      "warning": "Kurs 243825 ligger uden for sikkerhedsgrænsen",
+      "warning": "Kurs 242829 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
