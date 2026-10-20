@@ -1,19 +1,18 @@
 {
-  "updatedAt": "2026-10-19T22:59:33.933Z",
-  "lastTradingDay": "2026-10-16",
-  "source": "partial-official-2-of-3",
-  "runId": 1792450775736,
+  "updatedAt": "2026-10-20T22:29:47.614Z",
+  "lastTradingDay": "2026-10-20",
+  "source": "official-nordea",
+  "runId": 1792535389098,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 116.0938,
-      "marketDate": "2026-10-14",
-      "updatedAt": "2026-10-19T22:59:33.933Z",
-      "source": "previous-safe",
+      "price": 114.2102,
+      "marketDate": "2026-10-20",
+      "updatedAt": "2026-10-20T22:29:47.614Z",
+      "source": "official-nordea",
       "historyVersion": 2,
-      "warning": "LatestNAV blev ikke fundet på Nordea-siden",
       "history": [
         {
           "date": "2026-07-20T12:00:00.000Z",
@@ -206,6 +205,10 @@
         {
           "date": "2026-10-14T12:00:00.000Z",
           "price": 116.0938
+        },
+        {
+          "date": "2026-10-20T12:00:00.000Z",
+          "price": 114.2102
         }
       ]
     },
@@ -213,9 +216,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 151.1878,
-      "marketDate": "2026-10-16",
-      "updatedAt": "2026-10-19T22:59:33.933Z",
+      "price": 150.0312,
+      "marketDate": "2026-10-19",
+      "updatedAt": "2026-10-20T22:29:47.614Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -446,6 +449,10 @@
         {
           "date": "2026-10-16T12:00:00.000Z",
           "price": 151.1878
+        },
+        {
+          "date": "2026-10-19T12:00:00.000Z",
+          "price": 150.0312
         }
       ]
     },
@@ -453,9 +460,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 239.2847,
-      "marketDate": "2026-10-16",
-      "updatedAt": "2026-10-19T22:59:33.933Z",
+      "price": 240.3768,
+      "marketDate": "2026-10-19",
+      "updatedAt": "2026-10-20T22:29:47.614Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -698,6 +705,10 @@
         {
           "date": "2026-10-16T12:00:00.000Z",
           "price": 239.2847
+        },
+        {
+          "date": "2026-10-19T12:00:00.000Z",
+          "price": 240.3768
         }
       ]
     }
