@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-10-21T22:34:59.419Z",
-  "lastTradingDay": "2026-10-21",
-  "source": "official-nordea",
-  "runId": 1792622100243,
+  "updatedAt": "2026-10-22T22:36:24.400Z",
+  "lastTradingDay": "2026-10-22",
+  "source": "partial-official-2-of-3",
+  "runId": 1792708585734,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 116.1508,
-      "marketDate": "2026-10-21",
-      "updatedAt": "2026-10-21T22:34:59.419Z",
+      "price": 114.5871,
+      "marketDate": "2026-10-22",
+      "updatedAt": "2026-10-22T22:36:24.400Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -213,6 +213,10 @@
         {
           "date": "2026-10-21T12:00:00.000Z",
           "price": 116.1508
+        },
+        {
+          "date": "2026-10-22T12:00:00.000Z",
+          "price": 114.5871
         }
       ]
     },
@@ -222,9 +226,10 @@
       "currency": "DKK",
       "price": 149.7285,
       "marketDate": "2026-10-20",
-      "updatedAt": "2026-10-21T22:34:59.419Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-10-22T22:36:24.400Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 150973 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
@@ -468,9 +473,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 240.0663,
-      "marketDate": "2026-10-20",
-      "updatedAt": "2026-10-21T22:34:59.419Z",
+      "price": 242.0734,
+      "marketDate": "2026-10-21",
+      "updatedAt": "2026-10-22T22:36:24.400Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -721,6 +726,10 @@
         {
           "date": "2026-10-20T12:00:00.000Z",
           "price": 240.0663
+        },
+        {
+          "date": "2026-10-21T12:00:00.000Z",
+          "price": 242.0734
         }
       ]
     }
