@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-26T23:14:27.477Z",
+  "updatedAt": "2026-10-27T23:02:58.813Z",
   "lastTradingDay": "2026-10-26",
-  "source": "official-nordea",
-  "runId": 1793056468384,
+  "source": "partial-official-2-of-3",
+  "runId": 1793142180418,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
@@ -10,9 +10,10 @@
       "currency": "EUR",
       "price": 114.9975,
       "marketDate": "2026-10-26",
-      "updatedAt": "2026-10-26T23:14:27.477Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-10-27T23:02:58.813Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 116362 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-20T12:00:00.000Z",
@@ -232,9 +233,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 149.2289,
-      "marketDate": "2026-10-23",
-      "updatedAt": "2026-10-26T23:14:27.477Z",
+      "price": 150.2711,
+      "marketDate": "2026-10-26",
+      "updatedAt": "2026-10-27T23:02:58.813Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -481,6 +482,10 @@
         {
           "date": "2026-10-23T12:00:00.000Z",
           "price": 149.2289
+        },
+        {
+          "date": "2026-10-26T12:00:00.000Z",
+          "price": 150.2711
         }
       ]
     },
@@ -488,9 +493,9 @@
       "name": "Nordea Invest Global Enhanced KL 1",
       "isin": "DK0060949881",
       "currency": "DKK",
-      "price": 238.5945,
-      "marketDate": "2026-10-23",
-      "updatedAt": "2026-10-26T23:14:27.477Z",
+      "price": 240.2037,
+      "marketDate": "2026-10-26",
+      "updatedAt": "2026-10-27T23:02:58.813Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -753,6 +758,10 @@
         {
           "date": "2026-10-23T12:00:00.000Z",
           "price": 238.5945
+        },
+        {
+          "date": "2026-10-26T12:00:00.000Z",
+          "price": 240.2037
         }
       ]
     }
