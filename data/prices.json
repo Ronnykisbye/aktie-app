@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-11-20T01:22:54.739Z",
-  "lastTradingDay": "2026-11-19",
-  "source": "official-nordea",
-  "runId": 1795137775385,
+  "updatedAt": "2026-11-21T00:54:32.449Z",
+  "lastTradingDay": "2026-11-20",
+  "source": "partial-official-2-of-3",
+  "runId": 1795222473676,
   "items": [
     {
       "name": "Nordea Empower Europe Fund BQ",
       "isin": "LU3076185670",
       "currency": "EUR",
-      "price": 111.8529,
-      "marketDate": "2026-11-19",
-      "updatedAt": "2026-11-20T01:22:54.739Z",
+      "price": 107.6743,
+      "marketDate": "2026-11-20",
+      "updatedAt": "2026-11-21T00:54:32.449Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -285,6 +285,10 @@
         {
           "date": "2026-11-19T12:00:00.000Z",
           "price": 111.8529
+        },
+        {
+          "date": "2026-11-20T12:00:00.000Z",
+          "price": 107.6743
         }
       ]
     },
@@ -292,9 +296,9 @@
       "name": "Nordea Invest Europe Enhanced KL 1",
       "isin": "DK0060949964",
       "currency": "DKK",
-      "price": 150.7749,
-      "marketDate": "2026-11-18",
-      "updatedAt": "2026-11-20T01:22:54.739Z",
+      "price": 149.5722,
+      "marketDate": "2026-11-19",
+      "updatedAt": "2026-11-21T00:54:32.449Z",
       "source": "official-nordea",
       "historyVersion": 2,
       "history": [
@@ -609,6 +613,10 @@
         {
           "date": "2026-11-18T12:00:00.000Z",
           "price": 150.7749
+        },
+        {
+          "date": "2026-11-19T12:00:00.000Z",
+          "price": 149.5722
         }
       ]
     },
@@ -618,9 +626,10 @@
       "currency": "DKK",
       "price": 233.7746,
       "marketDate": "2026-11-18",
-      "updatedAt": "2026-11-20T01:22:54.739Z",
-      "source": "official-nordea",
+      "updatedAt": "2026-11-21T00:54:32.449Z",
+      "source": "previous-safe",
       "historyVersion": 2,
+      "warning": "Kurs 229498 ligger uden for sikkerhedsgrænsen",
       "history": [
         {
           "date": "2026-07-17T12:00:00.000Z",
